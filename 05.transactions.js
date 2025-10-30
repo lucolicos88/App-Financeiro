@@ -743,19 +743,22 @@ function createInstallmentTransactions(token, transactionData) {
     // Gerar ID pai para agrupar parcelas
     const parentId = Utilities.getUuid();
     const now = new Date().toISOString();
-    
-    // Calcular valor de cada parcela (arredondamento preciso)
-    const installmentAmount = Math.round((totalAmount / installments) * 100) / 100;
-    const lastInstallmentAmount = Math.round((totalAmount - (installmentAmount * (installments - 1))) * 100) / 100;
-    
+
+    // Calcular valores em centavos para evitar erros de ponto flutuante
+    const totalCents = Math.round(totalAmount * 100);
+    const installmentCents = Math.floor(totalCents / installments);
+    const lastInstallmentCents = totalCents - (installmentCents * (installments - 1));
+
     const createdIds = [];
-    
-    // Criar cada parcela
+    const batchData = [];
+
+    // Preparar dados de todas as parcelas para inserção em batch
     for (let i = 1; i <= installments; i++) {
       const id = getNextId('Transactions');
       const installmentDate = calculateInstallmentDate(sanitized.date, i - 1);
-      const amount = (i === installments) ? lastInstallmentAmount : installmentAmount;
-      
+      const amountCents = (i === installments) ? lastInstallmentCents : installmentCents;
+      const amount = amountCents / 100; // Converte de volta para reais
+
       const rowData = [
         id,
         installmentDate,
@@ -771,31 +774,48 @@ function createInstallmentTransactions(token, transactionData) {
         i,
         parentId
       ];
-      
-      const success = addRow('Transactions', rowData);
-      
-      if (!success) {
-        console.error('[TRANSACTIONS] Erro ao criar parcela', i);
-        logEvent('TRANSACTIONS', 'ERROR', 'createInstallmentTransactions', 'Erro ao criar parcela ' + i, '');
-        return {
-          success: false,
-          message: 'Erro ao criar parcela ' + i
-        };
-      }
-      
+
+      batchData.push(rowData);
       createdIds.push(id);
+    }
+
+    // Inserir todas as parcelas de uma vez (operação em batch)
+    try {
+      const sheet = getSheet('Transactions');
+      if (!sheet) {
+        throw new Error('Planilha Transactions não encontrada');
+      }
+
+      const lastRow = sheet.getLastRow();
+      const numColumns = batchData[0].length;
+
+      // Insere todas as linhas de uma vez
+      sheet.getRange(lastRow + 1, 1, installments, numColumns).setValues(batchData);
+
+      console.log('[TRANSACTIONS] Batch insert concluído:', installments, 'parcelas');
+    } catch (batchError) {
+      console.error('[TRANSACTIONS] Erro no batch insert:', batchError);
+      logEvent('TRANSACTIONS', 'ERROR', 'createInstallmentTransactions', 'Erro no batch insert', batchError.stack);
+      return {
+        success: false,
+        message: 'Erro ao criar parcelas: ' + batchError.message
+      };
     }
     
     console.log('[TRANSACTIONS] Parcelas criadas com sucesso:', installments);
     logEvent('TRANSACTIONS', 'INFO', 'createInstallmentTransactions', installments + ' parcelas criadas (parent: ' + parentId + ')', '');
     
+    // Invalidar cache após criar parcelas
+    invalidateCache('transactions_all');
+    invalidateCache('transactions_recent');
+
     return {
       success: true,
       message: installments + ' parcelas criadas com sucesso',
       parentId: parentId,
       installmentIds: createdIds,
       totalAmount: totalAmount,
-      installmentAmount: installmentAmount
+      installmentAmount: installmentCents / 100
     };
     
   } catch (error) {
@@ -809,20 +829,22 @@ function createInstallmentTransactions(token, transactionData) {
 }
 
 /**
- * Calcula data da parcela (incrementa meses)
- * 
+ * Calcula data da parcela (incrementa meses) - CORRIGIDO para fim de mês
+ *
  * @param {string} baseDate - Data base no formato YYYY-MM-DD
  * @param {number} monthsToAdd - Número de meses a adicionar
  * @returns {string} Data calculada no formato YYYY-MM-DD
  */
 function calculateInstallmentDate(baseDate, monthsToAdd) {
   const date = new Date(baseDate);
-  date.setMonth(date.getMonth() + monthsToAdd);
-  
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  
+
+  // Usa função addMonths que resolve bug de fim de mês
+  const newDate = addMonths(date, monthsToAdd);
+
+  const year = newDate.getFullYear();
+  const month = String(newDate.getMonth() + 1).padStart(2, '0');
+  const day = String(newDate.getDate()).padStart(2, '0');
+
   return `${year}-${month}-${day}`;
 }
 

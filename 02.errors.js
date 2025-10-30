@@ -30,8 +30,9 @@ function logEvent(module, level, action, message, stack) {
       return;
     }
     
-    // Obtém usuário atual (se disponível)
-    const user = Session.getActiveUser().getEmail() || 'system';
+    // Obtém usuário atual (se disponível) e ANONIMIZA para privacidade
+    const userEmail = Session.getActiveUser().getEmail() || 'system';
+    const user = userEmail === 'system' ? 'system' : anonymizeEmail(userEmail);
     
     // Timestamp atual
     const timestamp = new Date().toISOString();

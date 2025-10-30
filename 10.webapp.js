@@ -29,8 +29,9 @@ function doGet(e) {
     const htmlOutput = template.evaluate();
     
     // Configura título e outras propriedades
+    // SEGURANÇA: DENY previne clickjacking attacks
     htmlOutput.setTitle('Controle Financeiro Pessoal')
-              .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
+              .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.DENY)
               .addMetaTag('viewport', 'width=device-width, initial-scale=1');
     
     return htmlOutput;

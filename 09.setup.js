@@ -390,16 +390,16 @@ function setupInitialPassword(ss) {
   
   // Gera hash da senha com salt
   const passwordHash = hashPassword(defaultPassword, salt);
-  
-  // Salva salt e hash na planilha
-  const lastRow = sheet.getLastRow();
-  sheet.getRange(lastRow + 1, 1, 2, 2).setValues([
-    ['password_salt', salt],
-    ['password_hash', passwordHash]
-  ]);
-  
-  console.log('[SETUP] Senha inicial configurada (padrão: admin123)');
-  console.log('[SETUP] IMPORTANTE: Altere a senha após primeiro acesso!');
+
+  // Salva salt e hash NO PROPERTIESSERVICE (seguro)
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('password_salt', salt);
+  props.setProperty('password_hash', passwordHash);
+
+  console.log('[SETUP] Senha inicial configurada em PropertiesService');
+  console.log('[SETUP] Senha padrão temporária: admin123');
+  console.log('[SETUP] CRÍTICO: Altere a senha IMEDIATAMENTE após primeiro acesso!');
+  console.log('[SETUP] A senha deve ter mínimo 12 caracteres com letras e números');
 }
 
 /**
@@ -409,50 +409,61 @@ function setupInitialPassword(ss) {
  * @param {string} newPassword - Nova senha desejada
  */
 function generatePasswordHash(newPassword) {
-  if (!newPassword || newPassword.trim().length < 6) {
-    console.error('[SETUP] Senha deve ter no mínimo 6 caracteres');
+  if (!newPassword || newPassword.trim().length < 12) {
+    console.error('[SETUP] Senha deve ter no mínimo 12 caracteres');
     return;
   }
-  
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('Settings');
-  
+
+  // Validação de complexidade
+  const hasLetters = /[a-zA-Z]/.test(newPassword);
+  const hasNumbers = /[0-9]/.test(newPassword);
+
+  if (!hasLetters || !hasNumbers) {
+    console.error('[SETUP] Senha deve conter letras e números');
+    return;
+  }
+
   // Gera novo salt
   const salt = generateSalt();
-  
+
   // Gera hash da nova senha
   const passwordHash = hashPassword(newPassword, salt);
+
+  // Atualiza no PropertiesService (seguro)
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty('password_salt', salt);
+  props.setProperty('password_hash', passwordHash);
+
+  console.log('[SETUP] Nova senha configurada com sucesso no PropertiesService');
+  console.log('[SETUP] Salt:', salt);
+  console.log('[SETUP] Hash:', passwordHash);
+
+  // Remove referências antigas da planilha (se existirem)
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('Settings');
+    const data = sheet.getDataRange().getValues();
+    let saltRow = -1;
+    let hashRow = -1;
   
-  // Atualiza ou cria configurações
-  const data = sheet.getDataRange().getValues();
-  let saltRow = -1;
-  let hashRow = -1;
-  
-  // Procura linhas existentes
-  for (let i = 1; i < data.length; i++) {
-    if (data[i][0] === 'password_salt') saltRow = i + 1;
-    if (data[i][0] === 'password_hash') hashRow = i + 1;
+    // Procura linhas existentes
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0] === 'password_salt') saltRow = i + 1;
+      if (data[i][0] === 'password_hash') hashRow = i + 1;
+    }
+
+    // Remove referências antigas da planilha
+    if (saltRow > 0) {
+      sheet.deleteRow(saltRow);
+      console.log('[SETUP] Removida senha antiga da planilha (linha salt)');
+    }
+    if (hashRow > 0 && hashRow !== saltRow) {
+      sheet.deleteRow(hashRow > saltRow ? hashRow - 1 : hashRow);
+      console.log('[SETUP] Removida senha antiga da planilha (linha hash)');
+    }
+  } catch (cleanupError) {
+    console.warn('[SETUP] Aviso ao limpar planilha:', cleanupError);
   }
-  
-  // Atualiza ou cria salt
-  if (saltRow > 0) {
-    sheet.getRange(saltRow, 2).setValue(salt);
-  } else {
-    const lastRow = sheet.getLastRow();
-    sheet.getRange(lastRow + 1, 1, 1, 2).setValues([['password_salt', salt]]);
-  }
-  
-  // Atualiza ou cria hash
-  if (hashRow > 0) {
-    sheet.getRange(hashRow, 2).setValue(passwordHash);
-  } else {
-    const lastRow = sheet.getLastRow();
-    sheet.getRange(lastRow + 1, 1, 1, 2).setValues([['password_hash', passwordHash]]);
-  }
-  
-  console.log('[SETUP] Nova senha configurada com sucesso!');
-  console.log('[SETUP] Salt: ' + salt);
-  console.log('[SETUP] Hash: ' + passwordHash);
 }
 
 /**

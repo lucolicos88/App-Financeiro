@@ -4,9 +4,34 @@
  * =============================================================================
  */
 
+// CONSTANTES DE SEGURANÇA PARA ARQUIVOS
+const MAX_FILE_SIZE_MB = 10;
+const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
+
+const ALLOWED_MIME_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/webp',
+  'application/pdf',
+  'text/plain',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+];
+
+const ALLOWED_EXTENSIONS = [
+  '.jpg', '.jpeg', '.png', '.gif', '.webp',
+  '.pdf', '.txt',
+  '.xls', '.xlsx',
+  '.doc', '.docx'
+];
+
 /**
  * Configura a pasta padrão do Drive para uploads
- * 
+ *
  * @param {string} token - Token de sessão
  * @param {string} folderId - ID da pasta do Drive
  * @returns {Object} Resultado da operação
@@ -172,6 +197,43 @@ function uploadTransactionFile(token, transactionId, fileData) {
         message: 'Dados do arquivo inválidos'
       };
     }
+
+    // VALIDAÇÃO DE TIPO DE ARQUIVO (SEGURANÇA)
+    if (!ALLOWED_MIME_TYPES.includes(fileData.mimeType)) {
+      console.warn('[FILES] Tipo de arquivo não permitido:', fileData.mimeType);
+      return {
+        success: false,
+        message: 'Tipo de arquivo não permitido. Permitidos: imagens (JPG, PNG, GIF, WEBP), PDF, TXT, Excel, Word'
+      };
+    }
+
+    // VALIDAÇÃO DE EXTENSÃO (SEGURANÇA)
+    const fileName = fileData.name.toLowerCase();
+    const hasValidExtension = ALLOWED_EXTENSIONS.some(ext => fileName.endsWith(ext));
+    if (!hasValidExtension) {
+      console.warn('[FILES] Extensão de arquivo não permitida:', fileName);
+      return {
+        success: false,
+        message: 'Extensão de arquivo não permitida'
+      };
+    }
+
+    // VALIDAÇÃO DE TAMANHO DE ARQUIVO (SEGURANÇA)
+    let base64Data = fileData.content;
+    if (base64Data.includes('base64,')) {
+      base64Data = base64Data.split('base64,')[1];
+    }
+
+    // Calcula tamanho em bytes (base64 é ~33% maior que o arquivo original)
+    const estimatedSizeBytes = (base64Data.length * 3) / 4;
+
+    if (estimatedSizeBytes > MAX_FILE_SIZE_BYTES) {
+      console.warn('[FILES] Arquivo muito grande:', estimatedSizeBytes, 'bytes');
+      return {
+        success: false,
+        message: `Arquivo muito grande. Tamanho máximo: ${MAX_FILE_SIZE_MB}MB`
+      };
+    }
     
     // Obtém pasta de upload
     const folderId = getSetting('upload_folder_id');
@@ -192,18 +254,21 @@ function uploadTransactionFile(token, transactionId, fileData) {
       };
     }
     
-    // Remove prefixo data: do base64
-    let base64Data = fileData.content;
-    if (base64Data.includes('base64,')) {
-      base64Data = base64Data.split('base64,')[1];
+    // Decodifica base64 com tratamento de erros
+    let blob;
+    try {
+      blob = Utilities.newBlob(
+        Utilities.base64Decode(base64Data),
+        fileData.mimeType,
+        fileData.name
+      );
+    } catch (decodeError) {
+      console.error('[FILES] Erro ao decodificar base64:', decodeError);
+      return {
+        success: false,
+        message: 'Erro ao processar arquivo. Dados corrompidos ou inválidos.'
+      };
     }
-    
-    // Decodifica base64
-    const blob = Utilities.newBlob(
-      Utilities.base64Decode(base64Data),
-      fileData.mimeType,
-      fileData.name
-    );
     
     // Gera nome único para o arquivo
     const timestamp = new Date().getTime();
@@ -216,15 +281,18 @@ function uploadTransactionFile(token, transactionId, fileData) {
     const file = folder.createFile(blob.setName(newFileName));
     const fileId = file.getId();
     const fileUrl = file.getUrl();
-    
+
     console.log('[FILES] Arquivo criado:', newFileName, 'ID:', fileId);
-    
-      try {
-    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-    console.log('[FILES] Permissões configuradas para visualização pública');
-  } catch (permError) {
-    console.warn('[FILES] Não foi possível configurar permissões públicas:', permError.message);
-  }
+
+    // SEGURANÇA: Não compartilha publicamente por padrão
+    // Mantém permissões restritas (apenas proprietário)
+    try {
+      // Define permissões mais restritivas
+      file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.VIEW);
+      console.log('[FILES] Permissões configuradas como PRIVADAS (seguro)');
+    } catch (permError) {
+      console.warn('[FILES] Aviso ao configurar permissões:', permError.message);
+    }
 
     // Atualiza transação com ID do arquivo
     const currentData = found.data;
@@ -409,13 +477,33 @@ function removeTransactionFile(token, transactionId) {
       };
     }
     
-    // Move arquivo para lixeira
+    // VALIDAÇÃO DE PROPRIEDADE: Verifica se usuário pode deletar o arquivo
     try {
       const file = DriveApp.getFileById(fileId);
+
+      // Verifica se o arquivo pertence ao proprietário da planilha
+      const currentUser = Session.getEffectiveUser().getEmail();
+      const fileOwner = file.getOwner().getEmail();
+      const spreadsheetOwner = SpreadsheetApp.getActiveSpreadsheet().getOwner().getEmail();
+
+      // Permite delete apenas se usuário é owner da planilha
+      if (currentUser !== spreadsheetOwner) {
+        console.warn('[FILES] Usuário não autorizado a deletar arquivo:', currentUser);
+        return {
+          success: false,
+          message: 'Você não tem permissão para deletar este arquivo'
+        };
+      }
+
+      // Move arquivo para lixeira
       file.setTrashed(true);
       console.log('[FILES] Arquivo movido para lixeira:', fileId);
     } catch (error) {
-      console.warn('[FILES] Não foi possível mover arquivo para lixeira:', error.message);
+      console.warn('[FILES] Erro ao mover arquivo para lixeira:', error.message);
+      return {
+        success: false,
+        message: 'Erro ao deletar arquivo: ' + error.message
+      };
     }
     
     // Remove referência da transação

@@ -219,25 +219,50 @@ function validateSession(token) {
 }
 
 /**
- * Obtém credenciais armazenadas (salt e hash)
- * 
+ * Obtém credenciais armazenadas (salt e hash) - AGORA USA PROPERTIESSERVICE
+ *
  * @returns {Object|null} Objeto com salt e hash, ou null se não encontrado
  */
 function getStoredCredentials() {
   try {
+    const props = PropertiesService.getScriptProperties();
+
+    const salt = props.getProperty('password_salt');
+    const hash = props.getProperty('password_hash');
+
+    // Se não encontrou no PropertiesService, tenta migrar da planilha
+    if (!salt || !hash) {
+      return migrateCredentialsFromSheet();
+    }
+
+    return { salt, hash };
+
+  } catch (error) {
+    console.error('[AUTH] Erro ao obter credenciais:', error);
+    return null;
+  }
+}
+
+/**
+ * Migra credenciais da planilha para PropertiesService (compatibilidade)
+ *
+ * @returns {Object|null} Objeto com salt e hash, ou null se não encontrado
+ */
+function migrateCredentialsFromSheet() {
+  try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheet = ss.getSheetByName('Settings');
-    
+
     if (!sheet) {
       return null;
     }
-    
+
     // Lê todos os dados da aba Settings
     const data = sheet.getDataRange().getValues();
-    
+
     let salt = null;
     let hash = null;
-    
+
     // Procura por password_salt e password_hash
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === 'password_salt') {
@@ -247,16 +272,22 @@ function getStoredCredentials() {
         hash = data[i][1];
       }
     }
-    
-    // Retorna null se não encontrou ambos
-    if (!salt || !hash) {
-      return null;
+
+    // Se encontrou, migra para PropertiesService
+    if (salt && hash) {
+      const props = PropertiesService.getScriptProperties();
+      props.setProperty('password_salt', salt);
+      props.setProperty('password_hash', hash);
+
+      console.log('[AUTH] Credenciais migradas da planilha para PropertiesService');
+
+      return { salt, hash };
     }
-    
-    return { salt, hash };
-    
+
+    return null;
+
   } catch (error) {
-    console.error('[AUTH] Erro ao obter credenciais:', error);
+    console.error('[AUTH] Erro ao migrar credenciais:', error);
     return null;
   }
 }
@@ -299,22 +330,49 @@ function constantTimeCompare(a, b) {
 }
 
 /**
- * Verifica rate limiting de tentativas de login
- * 
+ * Verifica rate limiting de tentativas de login - MELHORADO com email
+ *
  * @returns {Object} Objeto indicando se requisição é permitida
  */
 function checkRateLimit() {
   try {
     const cache = CacheService.getUserCache();
-    const attempts = parseInt(cache.get('login_attempts') || '0');
-    
+    const userEmail = Session.getEffectiveUser().getEmail() || 'anonymous';
+
+    // Usa email como chave para rate limit individual
+    const cacheKey = `login_attempts_${hashString(userEmail).substring(0, 16)}`;
+    const lockKey = `account_locked_${hashString(userEmail).substring(0, 16)}`;
+
+    // Verifica se conta está bloqueada
+    const isLocked = cache.get(lockKey);
+    if (isLocked === 'true') {
+      return {
+        allowed: false,
+        message: 'Conta temporariamente bloqueada devido a múltiplas tentativas falhadas. Aguarde 1 hora.'
+      };
+    }
+
+    const attempts = parseInt(cache.get(cacheKey) || '0');
+
+    // Bloqueia após 10 tentativas
+    if (attempts >= 10) {
+      // Bloqueia conta por 1 hora
+      cache.put(lockKey, 'true', 3600);
+      logEvent('AUTH', 'WARN', 'checkRateLimit', `Conta bloqueada após ${attempts} tentativas`, '');
+
+      return {
+        allowed: false,
+        message: 'Conta bloqueada devido a múltiplas tentativas falhadas. Aguarde 1 hora.'
+      };
+    }
+
     if (attempts >= MAX_LOGIN_ATTEMPTS) {
       return {
         allowed: false,
-        message: 'Muitas tentativas de login. Aguarde 1 hora.'
+        message: `Muitas tentativas de login (${attempts}/${MAX_LOGIN_ATTEMPTS}). Aguarde alguns minutos.`
       };
     }
-    
+
     return {
       allowed: true,
       message: 'OK'
@@ -331,28 +389,38 @@ function checkRateLimit() {
 }
 
 /**
- * Incrementa contador de tentativas de login
+ * Incrementa contador de tentativas de login - MELHORADO com email
  */
 function incrementLoginAttempts() {
   try {
     const cache = CacheService.getUserCache();
-    const attempts = parseInt(cache.get('login_attempts') || '0');
-    
+    const userEmail = Session.getEffectiveUser().getEmail() || 'anonymous';
+    const cacheKey = `login_attempts_${hashString(userEmail).substring(0, 16)}`;
+
+    const attempts = parseInt(cache.get(cacheKey) || '0');
+
     // Incrementa e armazena por 1 hora
-    cache.put('login_attempts', (attempts + 1).toString(), 3600);
-    
+    cache.put(cacheKey, (attempts + 1).toString(), 3600);
+
+    console.log(`[AUTH] Tentativa falhada ${attempts + 1} para usuário ${anonymizeEmail(userEmail)}`);
+
   } catch (error) {
     console.error('[AUTH] Erro ao incrementar tentativas:', error);
   }
 }
 
 /**
- * Reseta contador de tentativas de login
+ * Reseta contador de tentativas de login - MELHORADO com email
  */
 function resetLoginAttempts() {
   try {
     const cache = CacheService.getUserCache();
-    cache.remove('login_attempts');
+    const userEmail = Session.getEffectiveUser().getEmail() || 'anonymous';
+    const cacheKey = `login_attempts_${hashString(userEmail).substring(0, 16)}`;
+    const lockKey = `account_locked_${hashString(userEmail).substring(0, 16)}`;
+
+    cache.remove(cacheKey);
+    cache.remove(lockKey);
     
   } catch (error) {
     console.error('[AUTH] Erro ao resetar tentativas:', error);
@@ -386,10 +454,22 @@ function changePassword(token, oldPassword, newPassword) {
       };
     }
     
-    if (newPassword.length < 6) {
+    // Validação de senha forte: mínimo 12 caracteres
+    if (newPassword.length < 12) {
       return {
         success: false,
-        message: 'Nova senha deve ter no mínimo 6 caracteres'
+        message: 'Nova senha deve ter no mínimo 12 caracteres'
+      };
+    }
+
+    // Validação de complexidade: deve ter letras e números
+    const hasLetters = /[a-zA-Z]/.test(newPassword);
+    const hasNumbers = /[0-9]/.test(newPassword);
+
+    if (!hasLetters || !hasNumbers) {
+      return {
+        success: false,
+        message: 'Nova senha deve conter letras e números'
       };
     }
     
@@ -416,21 +496,11 @@ function changePassword(token, oldPassword, newPassword) {
     // Gera novo salt e hash
     const newSalt = generateSalt();
     const newHash = hashPassword(newPassword, newSalt);
-    
-    // Atualiza na planilha
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('Settings');
-    const data = sheet.getDataRange().getValues();
-    
-    // Atualiza salt e hash
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === 'password_salt') {
-        sheet.getRange(i + 1, 2).setValue(newSalt);
-      }
-      if (data[i][0] === 'password_hash') {
-        sheet.getRange(i + 1, 2).setValue(newHash);
-      }
-    }
+
+    // Atualiza no PropertiesService (seguro)
+    const props = PropertiesService.getScriptProperties();
+    props.setProperty('password_salt', newSalt);
+    props.setProperty('password_hash', newHash);
     
     // Log de sucesso
     logEvent('AUTH', 'INFO', 'changePassword', 'Senha alterada com sucesso', '');

@@ -53,21 +53,22 @@ function isValidNumber(value) {
 
 /**
  * Sanitiza string removendo caracteres perigosos
- * 
+ *
  * @param {string} str - String a sanitizar
  * @param {number} maxLength - Comprimento máximo (padrão 1000)
  * @returns {string} String sanitizada
  */
 function sanitizeString(str, maxLength) {
-  if (!str || typeof str !== 'string') {
+  // Validação explícita de null/undefined
+  if (str === null || str === undefined || typeof str !== 'string') {
     return '';
   }
-  
+
   // Define comprimento máximo padrão
   if (!maxLength || maxLength < 1) {
     maxLength = 1000;
   }
-  
+
   // Remove espaços extras e limita comprimento
   return str.trim().substring(0, maxLength);
 }
@@ -185,8 +186,8 @@ function getDaysDifference(date1, date2) {
 }
 
 /**
- * Valida email
- * 
+ * Valida email com regex mais robusto
+ *
  * @param {string} email - Email a validar
  * @returns {boolean} True se válido, False caso contrário
  */
@@ -194,18 +195,19 @@ function isValidEmail(email) {
   if (!email || typeof email !== 'string') {
     return false;
   }
-  
-  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Regex mais robusto para validação de email
+  const regex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
   return regex.test(email);
 }
 
 /**
- * Gera ID único baseado em timestamp
- * 
- * @returns {string} ID único
+ * Gera ID único usando UUID do Google Apps Script
+ *
+ * @returns {string} ID único (UUID)
  */
 function generateUniqueId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  return Utilities.getUuid();
 }
 
 /**
@@ -326,23 +328,254 @@ function sleep(ms) {
 
 /**
  * Retry de função com backoff exponencial
- * 
+ *
  * @param {Function} fn - Função a executar
  * @param {number} maxRetries - Máximo de tentativas
  * @returns {*} Resultado da função
  */
 function retryWithBackoff(fn, maxRetries) {
   maxRetries = maxRetries || 3;
-  
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       return fn();
     } catch (error) {
       if (i === maxRetries - 1) {
-        throw error;
+        throw new Error(`Failed after ${maxRetries} attempts: ${error.message}`);
       }
       const delay = Math.pow(2, i) * 1000;
       Utilities.sleep(delay);
     }
   }
+}
+
+/**
+ * =============================================================================
+ * CACHE SERVICE - Sistema de Cache para Otimização de Performance
+ * =============================================================================
+ */
+
+/**
+ * Obtém dados do cache ou executa função se não existir
+ *
+ * @param {string} key - Chave do cache
+ * @param {Function} fn - Função para obter dados se não estiver em cache
+ * @param {number} ttl - Tempo de vida em segundos (padrão: 600 = 10 min)
+ * @returns {*} Dados do cache ou resultado da função
+ */
+function getCachedData(key, fn, ttl) {
+  const cache = CacheService.getUserCache();
+  ttl = ttl || 600; // 10 minutos padrão
+
+  try {
+    // Tenta obter do cache
+    const cached = cache.get(key);
+    if (cached !== null) {
+      return JSON.parse(cached);
+    }
+
+    // Se não existe, executa função e armazena
+    const data = fn();
+    cache.put(key, JSON.stringify(data), ttl);
+    return data;
+  } catch (error) {
+    // Se falhar, executa função diretamente
+    console.error('[CACHE] Error:', error);
+    return fn();
+  }
+}
+
+/**
+ * Armazena dados no cache
+ *
+ * @param {string} key - Chave do cache
+ * @param {*} data - Dados a armazenar
+ * @param {number} ttl - Tempo de vida em segundos (padrão: 600)
+ */
+function setCacheData(key, data, ttl) {
+  const cache = CacheService.getUserCache();
+  ttl = ttl || 600;
+
+  try {
+    cache.put(key, JSON.stringify(data), ttl);
+  } catch (error) {
+    console.error('[CACHE] Set error:', error);
+  }
+}
+
+/**
+ * Invalida cache específico
+ *
+ * @param {string} key - Chave do cache a invalidar
+ */
+function invalidateCache(key) {
+  const cache = CacheService.getUserCache();
+
+  try {
+    cache.remove(key);
+  } catch (error) {
+    console.error('[CACHE] Invalidate error:', error);
+  }
+}
+
+/**
+ * Invalida múltiplos caches por padrão
+ *
+ * @param {string} pattern - Padrão de chaves (ex: 'transactions_*')
+ */
+function invalidateCachePattern(pattern) {
+  // CacheService não suporta pattern matching, então invalidamos chaves conhecidas
+  const cache = CacheService.getUserCache();
+
+  const commonKeys = [
+    'categories_all',
+    'transactions_all',
+    'transactions_recent',
+    'settings_all',
+    'dashboard_kpis',
+    'reports_balance',
+    'reports_category',
+    'reports_monthly'
+  ];
+
+  commonKeys.forEach(key => {
+    if (key.startsWith(pattern.replace('*', ''))) {
+      try {
+        cache.remove(key);
+      } catch (error) {
+        console.error('[CACHE] Pattern invalidate error:', error);
+      }
+    }
+  });
+}
+
+/**
+ * Limpa todo o cache do usuário
+ */
+function clearAllCache() {
+  const cache = CacheService.getUserCache();
+
+  try {
+    cache.removeAll(['categories_all', 'transactions_all', 'transactions_recent',
+                     'settings_all', 'dashboard_kpis', 'reports_balance',
+                     'reports_category', 'reports_monthly']);
+  } catch (error) {
+    console.error('[CACHE] Clear all error:', error);
+  }
+}
+
+/**
+ * =============================================================================
+ * VALIDAÇÕES E UTILIDADES ADICIONAIS
+ * =============================================================================
+ */
+
+/**
+ * Adiciona meses a uma data corretamente (resolve bug de fim de mês)
+ *
+ * @param {Date} date - Data original
+ * @param {number} months - Número de meses a adicionar
+ * @returns {Date} Nova data
+ */
+function addMonths(date, months) {
+  const d = new Date(date);
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + months);
+
+  // Se o dia mudou (ex: 31 jan + 1 mês = 3 mar), ajusta para último dia do mês
+  if (d.getDate() !== day) {
+    d.setDate(0); // Último dia do mês anterior
+  }
+
+  return d;
+}
+
+/**
+ * Valida se data não está muito no futuro
+ *
+ * @param {string} dateStr - Data em formato YYYY-MM-DD
+ * @param {number} maxYears - Máximo de anos no futuro (padrão: 1)
+ * @returns {boolean} True se válida, False se muito no futuro
+ */
+function isValidFutureDate(dateStr, maxYears) {
+  if (!isValidDate(dateStr)) {
+    return false;
+  }
+
+  maxYears = maxYears || 1;
+  const date = new Date(dateStr);
+  const today = new Date();
+  const maxDate = new Date();
+  maxDate.setFullYear(today.getFullYear() + maxYears);
+
+  return date <= maxDate;
+}
+
+/**
+ * Normaliza data removendo informações de hora
+ *
+ * @param {Date|string} date - Data a normalizar
+ * @returns {string} Data normalizada em formato YYYY-MM-DD
+ */
+function normalizeDate(date) {
+  let d;
+
+  if (typeof date === 'string') {
+    d = new Date(date);
+  } else if (date instanceof Date) {
+    d = date;
+  } else {
+    return getToday();
+  }
+
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Hash simples de string (para anonimização)
+ *
+ * @param {string} str - String a fazer hash
+ * @returns {string} Hash da string
+ */
+function hashString(str) {
+  if (!str || typeof str !== 'string') {
+    return '';
+  }
+
+  // Usa SHA-256 do Utilities
+  const hash = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    str,
+    Utilities.Charset.UTF_8
+  );
+
+  return hash.map(byte => ('0' + (byte & 0xFF).toString(16)).slice(-2)).join('');
+}
+
+/**
+ * Anonimiza email para logs
+ *
+ * @param {string} email - Email a anonimizar
+ * @returns {string} Email anonimizado
+ */
+function anonymizeEmail(email) {
+  if (!email || typeof email !== 'string') {
+    return 'anonymous';
+  }
+
+  // Pega primeiros 3 caracteres + hash dos últimos 6 dígitos do hash completo
+  const fullHash = hashString(email);
+  const shortHash = fullHash.substring(fullHash.length - 6);
+
+  const atIndex = email.indexOf('@');
+  if (atIndex > 0) {
+    const prefix = email.substring(0, Math.min(3, atIndex));
+    return `${prefix}***@${shortHash}`;
+  }
+
+  return `usr_${shortHash}`;
 }

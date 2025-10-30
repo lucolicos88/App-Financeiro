@@ -237,34 +237,42 @@ function findRowById(sheetName, id) {
 }
 
 /**
- * Gera próximo ID disponível para uma aba
- * 
+ * Gera próximo ID disponível para uma aba - COM LOCK para evitar race conditions
+ *
  * @param {string} sheetName - Nome da aba
  * @returns {number} Próximo ID disponível
  */
 function getNextId(sheetName) {
+  const lock = LockService.getScriptLock();
+
   try {
+    // Aguarda até 30 segundos pelo lock
+    lock.waitLock(30000);
+
     const sheet = getSheet(sheetName);
     if (!sheet) {
       return 1;
     }
-    
+
     const lastRow = sheet.getLastRow();
-    
+
     // Se só tem cabeçalho, retorna 1
     if (lastRow <= 1) {
       return 1;
     }
-    
+
     // Lê última linha e pega ID (primeira coluna)
     const lastId = sheet.getRange(lastRow, 1).getValue();
-    
+
     // Retorna próximo ID
     return parseInt(lastId) + 1;
-    
+
   } catch (error) {
     console.error('[SHEETS] Erro ao gerar ID:', error);
     return 1;
+  } finally {
+    // Sempre libera o lock
+    lock.releaseLock();
   }
 }
 
