@@ -2,7 +2,7 @@
  * =============================================================================
  * REPORTS.GS - Módulo de Relatórios e Análises
  * =============================================================================
- * 
+ *
  * Responsável por gerar relatórios e análises financeiras:
  * - Relatório por período (entradas, saídas, saldo)
  * - Relatório por categoria
@@ -10,14 +10,88 @@
  * - Top categorias
  * - Evolução do saldo
  * - Comparativos entre períodos
- * 
+ *
  * Todos os relatórios requerem autenticação válida.
  * =============================================================================
  */
 
 /**
+ * Valida período de datas para relatórios
+ *
+ * @param {string} startDate - Data inicial (YYYY-MM-DD)
+ * @param {string} endDate - Data final (YYYY-MM-DD)
+ * @param {boolean} allowFuture - Permite datas futuras (padrão: false)
+ * @returns {Object} { valid: boolean, message: string }
+ */
+function validateDateRange(startDate, endDate, allowFuture) {
+  allowFuture = allowFuture || false;
+
+  // Verifica se datas foram fornecidas
+  if (!startDate || typeof startDate !== 'string') {
+    return { valid: false, message: 'Data inicial é obrigatória' };
+  }
+
+  if (!endDate || typeof endDate !== 'string') {
+    return { valid: false, message: 'Data final é obrigatória' };
+  }
+
+  // Valida formato YYYY-MM-DD
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+
+  if (!dateRegex.test(startDate)) {
+    return { valid: false, message: 'Data inicial deve estar no formato YYYY-MM-DD' };
+  }
+
+  if (!dateRegex.test(endDate)) {
+    return { valid: false, message: 'Data final deve estar no formato YYYY-MM-DD' };
+  }
+
+  // Valida se são datas válidas
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  if (isNaN(start.getTime())) {
+    return { valid: false, message: 'Data inicial inválida' };
+  }
+
+  if (isNaN(end.getTime())) {
+    return { valid: false, message: 'Data final inválida' };
+  }
+
+  // Verifica se data inicial é anterior ou igual à final
+  if (start > end) {
+    return { valid: false, message: 'Data inicial deve ser anterior ou igual à data final' };
+  }
+
+  // Verifica datas futuras (se não permitido)
+  if (!allowFuture) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (start > today) {
+      return { valid: false, message: 'Data inicial não pode ser futura' };
+    }
+
+    if (end > today) {
+      return { valid: false, message: 'Data final não pode ser futura' };
+    }
+  }
+
+  // Verifica se o período não é muito longo (máximo 10 anos)
+  const maxDays = 3650; // 10 anos
+  const diffTime = Math.abs(end - start);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays > maxDays) {
+    return { valid: false, message: `Período máximo permitido é de ${maxDays} dias (10 anos)` };
+  }
+
+  return { valid: true, message: 'OK' };
+}
+
+/**
  * Gera relatório por período
- * 
+ *
  * @param {string} token - Token de sessão
  * @param {string} startDate - Data inicial (YYYY-MM-DD)
  * @param {string} endDate - Data final (YYYY-MM-DD)
@@ -32,12 +106,13 @@ function getReportByPeriod(token, startDate, endDate) {
         message: 'Sessão inválida ou expirada'
       };
     }
-    
-    // Valida datas
-    if (!startDate || !endDate) {
+
+    // Valida período de datas
+    const dateValidation = validateDateRange(startDate, endDate, false);
+    if (!dateValidation.valid) {
       return {
         success: false,
-        message: 'Datas são obrigatórias'
+        message: dateValidation.message
       };
     }
     
@@ -265,15 +340,26 @@ function getReportByCategory(token, category, startDate, endDate) {
         message: 'Sessão inválida ou expirada'
       };
     }
-    
+
     // Valida categoria
-    if (!category) {
+    if (!category || typeof category !== 'string' || category.trim().length === 0) {
       return {
         success: false,
         message: 'Categoria é obrigatória'
       };
     }
-    
+
+    // Valida datas se ambas forem fornecidas
+    if (startDate && endDate) {
+      const dateValidation = validateDateRange(startDate, endDate, false);
+      if (!dateValidation.valid) {
+        return {
+          success: false,
+          message: dateValidation.message
+        };
+      }
+    }
+
     // Monta filtros
     const filters = { category: category };
     if (startDate) filters.startDate = startDate;
@@ -584,22 +670,31 @@ function comparePeriods(token, period1Start, period1End, period2Start, period2En
 function getInstallmentReport(token, startDate, endDate) {
   try {
     console.log('[REPORTS] getInstallmentReport chamada');
-    
+
     if (!validateSession(token)) {
       return {
         success: false,
         message: 'Sessão inválida ou expirada'
       };
     }
-    
+
     // Se não forneceu datas, usa ano atual
     if (!startDate || !endDate) {
       const now = new Date();
       const year = now.getFullYear();
       startDate = `${year}-01-01`;
       endDate = `${year}-12-31`;
+    } else {
+      // Valida datas fornecidas
+      const dateValidation = validateDateRange(startDate, endDate, false);
+      if (!dateValidation.valid) {
+        return {
+          success: false,
+          message: dateValidation.message
+        };
+      }
     }
-    
+
     console.log('[REPORTS] Período:', startDate, 'a', endDate);
     
     // Obtém todas as transações do período

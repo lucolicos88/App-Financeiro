@@ -4,10 +4,14 @@
  * =============================================================================
  */
 
+// Limites de quantidade para prevenir abuso e problemas de performance
+const MAX_TRANSACTIONS = 50000;  // Máximo de transações permitidas no sistema
+const MAX_INSTALLMENTS = 60;      // Máximo de parcelas por transação
+
 function createTransaction(token, transactionData) {
   try {
     console.log('[TRANSACTIONS] createTransaction chamada com:', transactionData);
-    
+
     if (!validateSession(token)) {
       console.log('[TRANSACTIONS] Sessão inválida');
       return {
@@ -15,7 +19,18 @@ function createTransaction(token, transactionData) {
         message: 'Sessão inválida ou expirada'
       };
     }
-    
+
+    // Verifica limite de transações
+    const currentCount = getAllData('Transactions').length;
+    if (currentCount >= MAX_TRANSACTIONS) {
+      console.log('[TRANSACTIONS] Limite de transações atingido:', currentCount);
+      logEvent('TRANSACTIONS', 'WARN', 'createTransaction', `Limite de ${MAX_TRANSACTIONS} transações atingido`, '');
+      return {
+        success: false,
+        message: `Limite máximo de ${MAX_TRANSACTIONS} transações atingido. Exclua transações antigas antes de criar novas.`
+      };
+    }
+
     const validation = validateTransactionData(transactionData);
     if (!validation.valid) {
       console.log('[TRANSACTIONS] Dados inválidos:', validation.message);
@@ -91,10 +106,23 @@ const rowData = [
   }
 }
 
+/**
+ * Lista transações com suporte a paginação e filtros
+ *
+ * @param {string} token - Token de sessão
+ * @param {Object} filters - Filtros e parâmetros de paginação
+ * @param {number} filters.page - Número da página (padrão: 1)
+ * @param {number} filters.pageSize - Tamanho da página (padrão: 50, máximo: 1000)
+ * @param {string} filters.startDate - Data inicial (formato YYYY-MM-DD)
+ * @param {string} filters.endDate - Data final (formato YYYY-MM-DD)
+ * @param {string} filters.type - Tipo: 'debit' ou 'credit'
+ * @param {string} filters.category - Nome da categoria
+ * @returns {Object} Resultado com dados paginados
+ */
 function listTransactions(token, filters) {
   try {
     console.log('[TRANSACTIONS] listTransactions chamada com filters:', JSON.stringify(filters));
-    
+
     if (!validateSession(token)) {
       console.log('[TRANSACTIONS] Sessão inválida');
       return {
@@ -103,18 +131,29 @@ function listTransactions(token, filters) {
         data: []
       };
     }
-    
+
+    // Parâmetros de paginação
+    const page = (filters && filters.page && filters.page > 0) ? parseInt(filters.page) : 1;
+    const pageSize = (filters && filters.pageSize && filters.pageSize > 0)
+      ? Math.min(parseInt(filters.pageSize), 1000)  // Máximo 1000 por página
+      : 50;  // Padrão 50
+
+    console.log('[TRANSACTIONS] Paginação: página', page, 'tamanho', pageSize);
     console.log('[TRANSACTIONS] Obtendo dados da planilha...');
     const data = getAllData('Transactions');
     console.log('[TRANSACTIONS] Dados obtidos:', data.length, 'linhas');
-    
+
     if (!data || data.length === 0) {
       console.log('[TRANSACTIONS] Nenhuma transação encontrada');
       return {
         success: true,
         message: 'Nenhuma transação encontrada',
         data: [],
-        count: 0
+        count: 0,
+        total: 0,
+        page: page,
+        pageSize: pageSize,
+        totalPages: 0
       };
     }
     
@@ -198,25 +237,48 @@ function listTransactions(token, filters) {
       if (a.date < b.date) return 1;
       return 0;
     });
-    
-    console.log('[TRANSACTIONS] Retornando', transactions.length, 'transações');
-    
+
+    // Calcula paginação
+    const total = transactions.length;
+    const totalPages = Math.ceil(total / pageSize);
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+
+    // Aplica paginação
+    const paginatedTransactions = transactions.slice(startIndex, endIndex);
+
+    console.log('[TRANSACTIONS] Total:', total, '| Página', page, 'de', totalPages, '| Retornando', paginatedTransactions.length, 'transações');
+
     return {
       success: true,
       message: 'Transações listadas com sucesso',
-      data: transactions,
-      count: transactions.length
+      data: paginatedTransactions,
+      count: paginatedTransactions.length,
+      total: total,
+      page: page,
+      pageSize: pageSize,
+      totalPages: totalPages
     };
     
   } catch (error) {
     console.error('[TRANSACTIONS] Erro em listTransactions:', error);
     console.error('[TRANSACTIONS] Stack:', error.stack);
     logEvent('TRANSACTIONS', 'ERROR', 'listTransactions', 'Erro ao listar transações', error.stack);
+
+    const page = (filters && filters.page && filters.page > 0) ? parseInt(filters.page) : 1;
+    const pageSize = (filters && filters.pageSize && filters.pageSize > 0)
+      ? Math.min(parseInt(filters.pageSize), 1000)
+      : 50;
+
     return {
       success: false,
       message: 'Erro ao listar transações: ' + error.message,
       data: [],
-      count: 0
+      count: 0,
+      total: 0,
+      page: page,
+      pageSize: pageSize,
+      totalPages: 0
     };
   }
 }
@@ -472,7 +534,33 @@ function validateTransactionData(data) {
         message: 'Valor excede limite máximo'
       };
     }
-    
+
+    // Validação de parcelas
+    if (data.installments !== undefined && data.installments !== null) {
+      const installments = parseInt(data.installments);
+
+      if (isNaN(installments) || !Number.isInteger(installments)) {
+        return {
+          valid: false,
+          message: 'Número de parcelas deve ser um número inteiro'
+        };
+      }
+
+      if (installments < 1) {
+        return {
+          valid: false,
+          message: 'Número de parcelas deve ser no mínimo 1'
+        };
+      }
+
+      if (installments > MAX_INSTALLMENTS) {
+        return {
+          valid: false,
+          message: `Número de parcelas não pode exceder ${MAX_INSTALLMENTS}`
+        };
+      }
+    }
+
     return {
       valid: true,
       message: 'OK'

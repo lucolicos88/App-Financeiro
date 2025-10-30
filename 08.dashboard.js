@@ -107,87 +107,117 @@ function getMainKPIs(token) {
     
     const transactions = transactionsResult.data || [];
     console.log('[DASHBOARD] Total de transações para KPIs:', transactions.length);
-    
-    let totalCredits = 0;
-    let totalDebits = 0;
-    
-    transactions.forEach(t => {
-      if (t.type === 'credit') {
-        totalCredits += t.amount;
-      } else {
-        totalDebits += t.amount;
-      }
-    });
-    
-    const totalBalance = totalCredits - totalDebits;
-    
+
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
     const monthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
     const monthEnd = formatDateDash(now);
-    
-    let monthCredits = 0;
-    let monthDebits = 0;
-    let monthCount = 0;
-    
-    transactions.forEach(t => {
-      if (t.date >= monthStart && t.date <= monthEnd) {
+
+    // Estrutura de KPIs padrão (valores iniciais seguros)
+    const kpiData = {
+      total: {
+        credits: 0,
+        debits: 0,
+        balance: 0,
+        transactionCount: transactions.length,
+        installmentDebits: 0,
+        error: null
+      },
+      currentMonth: {
+        credits: 0,
+        debits: 0,
+        balance: 0,
+        transactionCount: 0,
+        month: currentMonth,
+        year: currentYear,
+        installmentDebits: 0,
+        error: null
+      }
+    };
+
+    // KPI 1: Totais gerais (com tratamento de erro individual)
+    try {
+      let totalCredits = 0;
+      let totalDebits = 0;
+
+      transactions.forEach(t => {
         if (t.type === 'credit') {
-          monthCredits += t.amount;
+          totalCredits += (parseFloat(t.amount) || 0);
         } else {
-          monthDebits += t.amount;
+          totalDebits += (parseFloat(t.amount) || 0);
         }
-        monthCount++;
-      }
-    });
-    
-    const monthBalance = monthCredits - monthDebits;
-    
-    console.log('[DASHBOARD] KPIs calculados - Total:', totalBalance, 'Mês:', monthBalance);
-    
-    // ============================================================
-    // INÍCIO DO CÓDIGO NOVO - Separar débitos parcelados
-    // ============================================================
-    let totalInstallmentDebits = 0;
-    let monthInstallmentDebits = 0;
+      });
 
-    transactions.forEach(t => {
-      if (t.type === 'debit' && t.isInstallment) {
-        totalInstallmentDebits += t.amount;
-        
+      kpiData.total.credits = totalCredits;
+      kpiData.total.debits = totalDebits;
+      kpiData.total.balance = totalCredits - totalDebits;
+
+      console.log('[DASHBOARD] KPI Total calculado - Balance:', kpiData.total.balance);
+    } catch (error) {
+      console.error('[DASHBOARD] Erro ao calcular KPI Total:', error);
+      kpiData.total.error = 'Erro ao calcular totais gerais';
+      logEvent('DASHBOARD', 'WARN', 'getMainKPIs', 'Erro ao calcular totais gerais', error.stack);
+    }
+
+    // KPI 2: Mês atual (com tratamento de erro individual)
+    try {
+      let monthCredits = 0;
+      let monthDebits = 0;
+      let monthCount = 0;
+
+      transactions.forEach(t => {
         if (t.date >= monthStart && t.date <= monthEnd) {
-          monthInstallmentDebits += t.amount;
+          if (t.type === 'credit') {
+            monthCredits += (parseFloat(t.amount) || 0);
+          } else {
+            monthDebits += (parseFloat(t.amount) || 0);
+          }
+          monthCount++;
         }
-      }
-    });
+      });
 
-    console.log('[DASHBOARD] Débitos parcelados - Total:', totalInstallmentDebits, 'Mês:', monthInstallmentDebits);
-    // ============================================================
-    // FIM DO CÓDIGO NOVO
-    // ============================================================
+      kpiData.currentMonth.credits = monthCredits;
+      kpiData.currentMonth.debits = monthDebits;
+      kpiData.currentMonth.balance = monthCredits - monthDebits;
+      kpiData.currentMonth.transactionCount = monthCount;
+
+      console.log('[DASHBOARD] KPI Mês calculado - Balance:', kpiData.currentMonth.balance);
+    } catch (error) {
+      console.error('[DASHBOARD] Erro ao calcular KPI Mês:', error);
+      kpiData.currentMonth.error = 'Erro ao calcular dados do mês';
+      logEvent('DASHBOARD', 'WARN', 'getMainKPIs', 'Erro ao calcular dados do mês', error.stack);
+    }
+
+    // KPI 3: Débitos parcelados (com tratamento de erro individual)
+    try {
+      let totalInstallmentDebits = 0;
+      let monthInstallmentDebits = 0;
+
+      transactions.forEach(t => {
+        if (t.type === 'debit' && t.isInstallment) {
+          totalInstallmentDebits += (parseFloat(t.amount) || 0);
+
+          if (t.date >= monthStart && t.date <= monthEnd) {
+            monthInstallmentDebits += (parseFloat(t.amount) || 0);
+          }
+        }
+      });
+
+      kpiData.total.installmentDebits = totalInstallmentDebits;
+      kpiData.currentMonth.installmentDebits = monthInstallmentDebits;
+
+      console.log('[DASHBOARD] KPI Parcelamento - Total:', totalInstallmentDebits, 'Mês:', monthInstallmentDebits);
+    } catch (error) {
+      console.error('[DASHBOARD] Erro ao calcular KPI Parcelamento:', error);
+      logEvent('DASHBOARD', 'WARN', 'getMainKPIs', 'Erro ao calcular débitos parcelados', error.stack);
+      // Não define erro aqui pois é um KPI "extra", não crítico
+    }
     
     return {
       success: true,
       message: 'KPIs obtidos com sucesso',
-      data: {
-        total: {
-          credits: totalCredits,
-          debits: totalDebits,
-          balance: totalBalance,
-          transactionCount: transactions.length,
-          installmentDebits: totalInstallmentDebits  // ← NOVO
-        },
-        currentMonth: {
-          credits: monthCredits,
-          debits: monthDebits,
-          balance: monthBalance,
-          transactionCount: monthCount,
-          month: currentMonth,
-          year: currentYear,
-          installmentDebits: monthInstallmentDebits  // ← NOVO
-        }
-      }
+      data: kpiData
     };
     
   } catch (error) {

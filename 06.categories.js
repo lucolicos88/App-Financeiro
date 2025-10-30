@@ -2,22 +2,25 @@
  * =============================================================================
  * CATEGORIES.GS - Módulo de Gerenciamento de Categorias
  * =============================================================================
- * 
+ *
  * Responsável por todas as operações relacionadas a categorias:
  * - Criar novas categorias
  * - Listar categorias (ativas, inativas, por tipo)
  * - Atualizar categorias
  * - Desativar/ativar categorias
  * - Validar categorias
- * 
+ *
  * Categorias não são deletadas, apenas desativadas para manter integridade
  * referencial com transações existentes.
  * =============================================================================
  */
 
+// Limites de quantidade para prevenir abuso
+const MAX_CATEGORIES = 500;  // Máximo de categorias permitidas no sistema
+
 /**
  * Cria uma nova categoria
- * 
+ *
  * @param {string} token - Token de sessão
  * @param {Object} categoryData - Dados da categoria
  * @returns {Object} Resultado da operação
@@ -31,7 +34,17 @@ function createCategory(token, categoryData) {
         message: 'Sessão inválida ou expirada'
       };
     }
-    
+
+    // Verifica limite de categorias
+    const currentCount = getAllData('Categories').length;
+    if (currentCount >= MAX_CATEGORIES) {
+      logEvent('CATEGORIES', 'WARN', 'createCategory', `Limite de ${MAX_CATEGORIES} categorias atingido`, '');
+      return {
+        success: false,
+        message: `Limite máximo de ${MAX_CATEGORIES} categorias atingido. Exclua categorias inativas antes de criar novas.`
+      };
+    }
+
     // Valida dados da categoria
     const validation = validateCategoryData(categoryData);
     if (!validation.valid) {
@@ -108,6 +121,17 @@ function createCategory(token, categoryData) {
  * @param {Object} filters - Filtros opcionais (kind, isActive)
  * @returns {Object} Resultado da operação com lista de categorias
  */
+/**
+ * Lista categorias com suporte a paginação e filtros
+ *
+ * @param {string} token - Token de sessão
+ * @param {Object} filters - Filtros e parâmetros de paginação
+ * @param {number} filters.page - Número da página (padrão: 1)
+ * @param {number} filters.pageSize - Tamanho da página (padrão: 100, máximo: 1000)
+ * @param {string} filters.kind - Tipo: 'debit' ou 'credit'
+ * @param {boolean} filters.isActive - Status ativo/inativo
+ * @returns {Object} Resultado com dados paginados
+ */
 function listCategories(token, filters) {
   try {
     // Valida sessão
@@ -118,16 +142,27 @@ function listCategories(token, filters) {
         data: []
       };
     }
-    
+
+    // Parâmetros de paginação
+    const page = (filters && filters.page && filters.page > 0) ? parseInt(filters.page) : 1;
+    const pageSize = (filters && filters.pageSize && filters.pageSize > 0)
+      ? Math.min(parseInt(filters.pageSize), 1000)  // Máximo 1000 por página
+      : 100;  // Padrão 100 (categorias são menos numerosas que transações)
+
     // Obtém todos os dados
     const data = getAllData('Categories');
-    
+
     // Se não há dados, retorna array vazio
     if (data.length === 0) {
       return {
         success: true,
         message: 'Nenhuma categoria encontrada',
-        data: []
+        data: [],
+        count: 0,
+        total: 0,
+        page: page,
+        pageSize: pageSize,
+        totalPages: 0
       };
     }
     
@@ -154,20 +189,44 @@ function listCategories(token, filters) {
     
     // Ordena por nome
     categories.sort((a, b) => a.name.localeCompare(b.name));
-    
+
+    // Calcula paginação
+    const total = categories.length;
+    const totalPages = Math.ceil(total / pageSize);
+    const startIndex = (page - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+
+    // Aplica paginação
+    const paginatedCategories = categories.slice(startIndex, endIndex);
+
     return {
       success: true,
       message: 'Categorias listadas com sucesso',
-      data: categories,
-      count: categories.length
+      data: paginatedCategories,
+      count: paginatedCategories.length,
+      total: total,
+      page: page,
+      pageSize: pageSize,
+      totalPages: totalPages
     };
     
   } catch (error) {
     logEvent('CATEGORIES', 'ERROR', 'listCategories', 'Erro ao listar categorias', error.stack);
+
+    const page = (filters && filters.page && filters.page > 0) ? parseInt(filters.page) : 1;
+    const pageSize = (filters && filters.pageSize && filters.pageSize > 0)
+      ? Math.min(parseInt(filters.pageSize), 1000)
+      : 100;
+
     return {
       success: false,
       message: 'Erro ao listar categorias: ' + error.message,
-      data: []
+      data: [],
+      count: 0,
+      total: 0,
+      page: page,
+      pageSize: pageSize,
+      totalPages: 0
     };
   }
 }
@@ -277,14 +336,16 @@ function updateCategory(token, id, categoryData) {
 }
 
 /**
- * Desativa uma categoria
- * Categorias não são deletadas para manter integridade referencial
- * 
+ * Função interna para alterar o status de uma categoria
+ * Evita duplicação de código entre activateCategory e deactivateCategory
+ *
  * @param {string} token - Token de sessão
  * @param {number} id - ID da categoria
+ * @param {boolean} isActive - Novo status (true = ativar, false = desativar)
+ * @param {string} actionName - Nome da ação para logs
  * @returns {Object} Resultado da operação
  */
-function deactivateCategory(token, id) {
+function setCategoryStatus(token, id, isActive, actionName) {
   try {
     // Valida sessão
     if (!validateSession(token)) {
@@ -293,7 +354,7 @@ function deactivateCategory(token, id) {
         message: 'Sessão inválida ou expirada'
       };
     }
-    
+
     // Valida ID
     if (!id || isNaN(parseInt(id))) {
       return {
@@ -301,112 +362,69 @@ function deactivateCategory(token, id) {
         message: 'ID inválido'
       };
     }
-    
+
     // Busca categoria
     const found = findRowById('Categories', parseInt(id));
     if (!found) {
-      logEvent('CATEGORIES', 'WARN', 'deactivateCategory', 'Categoria não encontrada: ID ' + id, '');
+      logEvent('CATEGORIES', 'WARN', actionName, `Categoria não encontrada: ID ${id}`, '');
       return {
         success: false,
         message: 'Categoria não encontrada'
       };
     }
-    
-    // Atualiza isActive para false
-    found.data[3] = false;
-    
+
+    // Atualiza isActive
+    found.data[3] = isActive;
+
     // Atualiza na planilha
     const success = updateRow('Categories', found.rowIndex, found.data);
-    
+
     if (!success) {
-      logEvent('CATEGORIES', 'ERROR', 'deactivateCategory', 'Erro ao desativar categoria', '');
+      logEvent('CATEGORIES', 'ERROR', actionName, `Erro ao ${isActive ? 'ativar' : 'desativar'} categoria`, '');
       return {
         success: false,
-        message: 'Erro ao desativar categoria'
+        message: `Erro ao ${isActive ? 'ativar' : 'desativar'} categoria`
       };
     }
-    
+
     // Log de sucesso
-    logEvent('CATEGORIES', 'INFO', 'deactivateCategory', 'Categoria desativada: ID ' + id, '');
-    
+    logEvent('CATEGORIES', 'INFO', actionName, `Categoria ${isActive ? 'ativada' : 'desativada'}: ID ${id}`, '');
+
     return {
       success: true,
-      message: 'Categoria desativada com sucesso'
+      message: `Categoria ${isActive ? 'ativada' : 'desativada'} com sucesso`
     };
-    
+
   } catch (error) {
-    logEvent('CATEGORIES', 'ERROR', 'deactivateCategory', 'Erro ao desativar categoria', error.stack);
+    logEvent('CATEGORIES', 'ERROR', actionName, `Erro ao ${isActive ? 'ativar' : 'desativar'} categoria`, error.stack);
     return {
       success: false,
-      message: 'Erro ao desativar categoria: ' + error.message
+      message: `Erro ao ${isActive ? 'ativar' : 'desativar'} categoria: ${error.message}`
     };
   }
 }
 
 /**
+ * Desativa uma categoria
+ * Categorias não são deletadas para manter integridade referencial
+ *
+ * @param {string} token - Token de sessão
+ * @param {number} id - ID da categoria
+ * @returns {Object} Resultado da operação
+ */
+function deactivateCategory(token, id) {
+  return setCategoryStatus(token, id, false, 'deactivateCategory');
+}
+
+/**
  * Ativa uma categoria
- * 
+ *
  * @param {string} token - Token de sessão
  * @param {number} id - ID da categoria
  * @returns {Object} Resultado da operação
  */
 function activateCategory(token, id) {
-  try {
-    // Valida sessão
-    if (!validateSession(token)) {
-      return {
-        success: false,
-        message: 'Sessão inválida ou expirada'
-      };
-    }
-    
-    // Valida ID
-    if (!id || isNaN(parseInt(id))) {
-      return {
-        success: false,
-        message: 'ID inválido'
-      };
-    }
-    
-    // Busca categoria
-    const found = findRowById('Categories', parseInt(id));
-    if (!found) {
-      logEvent('CATEGORIES', 'WARN', 'activateCategory', 'Categoria não encontrada: ID ' + id, '');
-      return {
-        success: false,
-        message: 'Categoria não encontrada'
-      };
-    }
-    
-    // Atualiza isActive para true
-    found.data[3] = true;
-    
-    // Atualiza na planilha
-    const success = updateRow('Categories', found.rowIndex, found.data);
-    
-    if (!success) {
-      logEvent('CATEGORIES', 'ERROR', 'activateCategory', 'Erro ao ativar categoria', '');
-      return {
-        success: false,
-        message: 'Erro ao ativar categoria'
-      };
-    }
-    
-    // Log de sucesso
-    logEvent('CATEGORIES', 'INFO', 'activateCategory', 'Categoria ativada: ID ' + id, '');
-    
-    return {
-      success: true,
-      message: 'Categoria ativada com sucesso'
-    };
-    
-  } catch (error) {
-    logEvent('CATEGORIES', 'ERROR', 'activateCategory', 'Erro ao ativar categoria', error.stack);
-    return {
-      success: false,
-      message: 'Erro ao ativar categoria: ' + error.message
-    };
-  }
+  return setCategoryStatus(token, id, true, 'activateCategory');
 }
 
 /**
