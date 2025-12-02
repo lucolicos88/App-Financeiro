@@ -1,13 +1,21 @@
-<!DOCTYPE html>>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Controle Financeiro Pessoal</title>
-  
+
+  <!-- PWA Meta Tags -->
+  <meta name="description" content="Aplicativo completo de controle financeiro pessoal com insights inteligentes">
+  <meta name="theme-color" content="#6366f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="FinanPessoal">
+  <link rel="manifest" href="manifest.json">
+
   <!-- Chart.js para gráficos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  
+
   <style>
    /* REMOVER SCROLL E ESPAÇOS */
   html {
@@ -1850,7 +1858,7 @@
               <tbody>
                 <tr>
                   <td><strong>Versão</strong></td>
-                  <td>2.2.0 - Dashboard Profissional</td>
+                  <td>2.3.0 - PWA + Alertas Inteligentes</td>
                 </tr>
                 <tr>
                   <td><strong>Aplicativo</strong></td>
@@ -3589,6 +3597,110 @@ function handleSessionExpired() {
   
   console.log('[SESSION] Logout automático realizado');
 }
+
+/* ===== PWA INSTALL ===== */
+let deferredPrompt;
+const installButton = document.createElement('button');
+installButton.id = 'installPWA';
+installButton.className = 'btn btn-primary btn-install-pwa';
+installButton.innerHTML = '📱 Instalar App';
+installButton.style.cssText = 'position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: none; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);';
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+
+  // Mostrar botão de instalação
+  installButton.style.display = 'inline-flex';
+  document.body.appendChild(installButton);
+
+  installButton.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === 'accepted') {
+      showToast('App instalado com sucesso! 🎉', 'success');
+    }
+
+    deferredPrompt = null;
+    installButton.style.display = 'none';
+  });
+});
+
+// Registrar Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('service-worker.js')
+      .then((registration) => {
+        console.log('[PWA] Service Worker registrado:', registration);
+      })
+      .catch((error) => {
+        console.log('[PWA] Falha ao registrar Service Worker:', error);
+      });
+  });
+}
+
+// Detectar quando app foi instalado
+window.addEventListener('appinstalled', () => {
+  installButton.style.display = 'none';
+  showToast('App instalado! Acesse pela tela inicial 📱', 'success');
+});
+
+/* ===== SISTEMA DE ALERTAS ===== */
+function checkFinancialAlerts() {
+  if (!sessionToken) return;
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result && result.success && result.data) {
+        displayAlerts(result.data);
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('[ALERTS] Erro ao carregar alertas:', error);
+    })
+    .getFinancialInsights(sessionToken);
+}
+
+function displayAlerts(insights) {
+  // Filtrar apenas alertas de alta prioridade
+  const alerts = insights.filter(i => i.importance === 'high' && (i.type === 'warning' || i.type === 'alert'));
+
+  if (alerts.length === 0) return;
+
+  // Mostrar primeiro alerta como notificação
+  const firstAlert = alerts[0];
+  showToast(`${firstAlert.icon} ${firstAlert.title}: ${firstAlert.message}`, firstAlert.type, 8000);
+
+  // Mostrar badge no ícone de dashboard se houver alertas
+  const dashboardTab = document.querySelector('[data-tab="dashboard"]');
+  if (dashboardTab && alerts.length > 0) {
+    const badge = document.createElement('span');
+    badge.className = 'alert-badge';
+    badge.textContent = alerts.length;
+    badge.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;';
+
+    // Remover badge anterior se existir
+    const oldBadge = dashboardTab.querySelector('.alert-badge');
+    if (oldBadge) oldBadge.remove();
+
+    dashboardTab.style.position = 'relative';
+    dashboardTab.appendChild(badge);
+  }
+}
+
+// Verificar alertas a cada 5 minutos
+setInterval(checkFinancialAlerts, 5 * 60 * 1000);
+
+// Verificar alertas ao carregar dashboard
+const originalLoadDashboard = loadDashboard;
+loadDashboard = function() {
+  return originalLoadDashboard().then(() => {
+    setTimeout(checkFinancialAlerts, 2000);
+  });
+};
 
   </script>
 </body>
