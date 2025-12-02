@@ -3599,6 +3599,9 @@ function handleSessionExpired() {
 }
 
 /* ===== PWA INSTALL ===== */
+// NOTA: PWA Install desabilitado - requer Service Worker funcional
+// Descomente quando hospedar em servidor web próprio com HTTPS
+/*
 let deferredPrompt;
 const installButton = document.createElement('button');
 installButton.id = 'installPWA';
@@ -3628,8 +3631,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
     installButton.style.display = 'none';
   });
 });
+*/
 
 // Registrar Service Worker
+// NOTA: Service Workers não funcionam com Google Apps Script
+// GAS requer HTTPS próprio e headers específicos para PWA
+// Descomente apenas se hospedar em servidor web próprio
+/*
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('service-worker.js')
@@ -3641,12 +3649,15 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
+*/
 
 // Detectar quando app foi instalado
+/*
 window.addEventListener('appinstalled', () => {
   installButton.style.display = 'none';
   showToast('App instalado! Acesse pela tela inicial 📱', 'success');
 });
+*/
 
 /* ===== SISTEMA DE ALERTAS ===== */
 function checkFinancialAlerts() {

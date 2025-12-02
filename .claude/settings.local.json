@@ -5,7 +5,9 @@
       "Bash(git add:*)",
       "Bash(git commit -m \"$(cat <<''EOF''\nVersão 2.2.0 - Dashboard Profissional com Insights e Dark Mode\n\nMelhorias implementadas:\n\n✅ KPIs Aprimorados:\n- Comparações temporais com mês anterior\n- Indicadores visuais de tendência (⬆️⬇️➡️)\n- Variações percentuais coloridas\n\n💎 Novos KPIs Profissionais:\n- Taxa de Poupança\n- Burn Rate (gasto diário)\n- Projeção de saldo fim do mês\n- Score de Saúde Financeira (0-100)\n\n💡 Insights Financeiros Automáticos:\n- Análise inteligente de dados\n- 8 tipos de insights contextualizados\n- Cards visuais por importância\n\n📊 Gráficos Aprimorados:\n- Tooltips avançados com variações\n- Percentuais em legendas\n- Hover effects melhorados\n- Anotações automáticas\n\n🌙 Dark Mode:\n- Toggle no header\n- Tema escuro completo\n- Transições suaves\n- Preferência salva em localStorage\n\n🎨 Design Profissional:\n- Hierarquia visual aprimorada\n- Animações sutis\n- Responsividade total\n- CSS otimizado\n\n🤖 Generated with Claude Code\nhttps://claude.com/claude-code\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(git push)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(clasp status:*)",
+      "Bash(clasp open:*)"
     ],
     "deny": [],
     "ask": []

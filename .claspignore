@@ -1,0 +1,20 @@
+# Arquivos que não devem ser enviados para o Google Apps Script
+# Service Worker e Manifest são apenas para PWA no navegador (incompatível com GAS)
+
+service-worker.js
+service-worker.js.original
+service-worker-stub.js
+manifest.json
+
+# Arquivos de configuração do Git
+.git/**
+.gitignore
+
+# Arquivos do Node.js
+node_modules/**
+package.json
+package-lock.json
+
+# Outros arquivos
+.DS_Store
+README.md
