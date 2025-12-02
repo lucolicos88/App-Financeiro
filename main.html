@@ -46,11 +46,37 @@
       --light-gray: #f3f4f6;
       --border: #e5e7eb;
       --white: #ffffff;
-      
+      --bg-gradient-1: #667eea;
+      --bg-gradient-2: #764ba2;
+
       --shadow: 0 1px 3px rgba(0,0,0,0.1);
       --shadow-lg: 0 10px 25px rgba(0,0,0,0.15);
       --radius: 12px;
       --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* Dark Mode Variables */
+    body.dark-mode {
+      --dark: #f9fafb;
+      --gray: #d1d5db;
+      --light-gray: #1f2937;
+      --border: #374151;
+      --white: #111827;
+      --bg-gradient-1: #1e3a8a;
+      --bg-gradient-2: #312e81;
+      --shadow: 0 1px 3px rgba(0,0,0,0.3);
+      --shadow-lg: 0 10px 25px rgba(0,0,0,0.5);
+    }
+
+    body.dark-mode .kpi-card,
+    body.dark-mode .kpi-professional-card,
+    body.dark-mode .card {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    body.dark-mode .insight-item {
+      background: #1f2937;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
     
     body {
@@ -58,12 +84,13 @@
       font-size: 14px;
       line-height: 1.6;
       color: var(--dark);
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      background-attachment: fixed; /* ADICIONAR ESTA LINHA */
+      background: linear-gradient(135deg, var(--bg-gradient-1) 0%, var(--bg-gradient-2) 100%);
+      background-attachment: fixed;
       min-height: 100vh;
-      margin: 0;     /* ADICIONAR */
-      padding: 0;    /* ADICIONAR */
-      overflow-x: hidden; /* ADICIONAR */
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+      transition: background 0.5s ease, color 0.3s ease;
     }
     
     /* ===== LOGIN ===== */
@@ -379,7 +406,199 @@
       font-size: 12px;
       opacity: 0.8;
     }
-    
+
+    .kpi-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .kpi-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 12px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .kpi-trend {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(10px);
+      white-space: nowrap;
+    }
+
+    .kpi-trend.positive {
+      background: rgba(16, 185, 129, 0.3);
+    }
+
+    .kpi-trend.negative {
+      background: rgba(239, 68, 68, 0.3);
+    }
+
+    /* ===== KPI PROFESSIONAL GRID ===== */
+    .kpi-professional-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-professional-card {
+      background: var(--white);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: var(--transition);
+      border-left: 4px solid var(--primary);
+    }
+
+    .kpi-professional-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .kpi-prof-icon {
+      font-size: 32px;
+      opacity: 0.9;
+      font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+      flex-shrink: 0;
+    }
+
+    .kpi-prof-content {
+      flex: 1;
+    }
+
+    .kpi-prof-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gray);
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .kpi-prof-value {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--dark);
+    }
+
+    .kpi-prof-health {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .health-bar {
+      width: 100%;
+      height: 8px;
+      background: var(--light-gray);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .health-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--danger) 0%, var(--warning) 50%, var(--success) 100%);
+      border-radius: 10px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    /* ===== INSIGHTS ===== */
+    .insights-card {
+      background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+      border: 2px solid var(--light-gray);
+    }
+
+    .insights-container {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .insights-loading {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 40px;
+      color: var(--gray);
+      font-style: italic;
+    }
+
+    .insight-item {
+      background: var(--white);
+      border-radius: 10px;
+      padding: 16px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      transition: var(--transition);
+      border-left: 4px solid var(--primary);
+    }
+
+    .insight-item:hover {
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    }
+
+    .insight-item.success {
+      border-left-color: var(--success);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, var(--white) 100%);
+    }
+
+    .insight-item.warning {
+      border-left-color: var(--warning);
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.05) 0%, var(--white) 100%);
+    }
+
+    .insight-item.alert {
+      border-left-color: var(--danger);
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.05) 0%, var(--white) 100%);
+    }
+
+    .insight-item.info {
+      border-left-color: var(--info);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, var(--white) 100%);
+    }
+
+    .insight-icon {
+      font-size: 28px;
+      flex-shrink: 0;
+      font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    }
+
+    .insight-content {
+      flex: 1;
+    }
+
+    .insight-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    .insight-message {
+      font-size: 14px;
+      color: var(--gray);
+      line-height: 1.5;
+    }
+
     /* ===== CHARTS ===== */
     .chart-container {
       position: relative;
@@ -579,7 +798,39 @@
       padding: 0;
       border-radius: 50%;
     }
-    
+
+    #darkModeToggle {
+      background: var(--white);
+      border: 2px solid var(--border);
+      font-size: 20px;
+      transition: var(--transition);
+    }
+
+    #darkModeToggle:hover {
+      transform: rotate(15deg) scale(1.1);
+      background: var(--light-gray);
+    }
+
+    body.dark-mode #darkModeToggle .dark-mode-icon::before {
+      content: '☀️';
+    }
+
+    body.dark-mode #darkModeToggle .dark-mode-icon::after {
+      content: '';
+    }
+
+    body:not(.dark-mode) #darkModeToggle .dark-mode-icon::before {
+      content: '🌙';
+    }
+
+    body:not(.dark-mode) #darkModeToggle .dark-mode-icon::after {
+      content: '';
+    }
+
+    .dark-mode-icon {
+      font-size: 20px;
+    }
+
     /* ===== TABLE ===== */
     .table-container {
       overflow-x: auto;
@@ -921,36 +1172,52 @@
         flex-direction: column;
         gap: 12px;
       }
-      
+
       .kpi-grid {
         grid-template-columns: 1fr;
       }
-      
+
+      .kpi-professional-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .insights-container {
+        grid-template-columns: 1fr;
+      }
+
       .chart-grid {
         grid-template-columns: 1fr;
       }
-      
+
       .form-row {
         grid-template-columns: 1fr;
       }
-      
+
       .table {
         font-size: 12px;
       }
-      
+
       .table th,
       .table td {
         padding: 10px;
       }
-      
+
       .nav-tabs {
         overflow-x: auto;
       }
-      
+
       .toast {
         left: 12px;
         right: 12px;
         max-width: none;
+      }
+
+      .kpi-value {
+        font-size: 24px;
+      }
+
+      .kpi-prof-value {
+        font-size: 18px;
       }
     }
   </style>
@@ -992,6 +1259,9 @@
         <h1 class="app-title"><span style="background: none; -webkit-text-fill-color: #f59e0b; color: #f59e0b;">💰</span> Controle Financeiro Pessoal</h1>
         <div class="header-actions">
           <span id="userInfo" class="text-muted"></span>
+          <button id="darkModeToggle" class="btn btn-icon" onclick="toggleDarkMode()" title="Alternar tema escuro">
+            <span class="dark-mode-icon">🌙</span>
+          </button>
           <button id="logoutBtn" class="btn btn-secondary btn-sm">Sair</button>
         </div>
       </header>
@@ -1014,34 +1284,104 @@
           <!-- KPIs Principais -->
           <div class="kpi-grid">
             <div class="kpi-card">
-              <div class="kpi-icon">💰</div>
-              <div class="kpi-label">Saldo Total</div>
+              <div class="kpi-header">
+                <div class="kpi-icon">💰</div>
+                <div class="kpi-label">Saldo Total</div>
+              </div>
               <div class="kpi-value" id="kpiBalance">R$ 0,00</div>
-              <div class="kpi-subtitle">Acumulado geral</div>
+              <div class="kpi-footer">
+                <span class="kpi-subtitle">Acumulado geral</span>
+              </div>
             </div>
-            
+
             <div class="kpi-card success">
-              <div class="kpi-icon">📈</div>
-              <div class="kpi-label">Entradas do Mês</div>
+              <div class="kpi-header">
+                <div class="kpi-icon">📈</div>
+                <div class="kpi-label">Entradas do Mês</div>
+              </div>
               <div class="kpi-value" id="kpiMonthCredits">R$ 0,00</div>
-              <div class="kpi-subtitle" id="kpiMonthName">-</div>
+              <div class="kpi-footer">
+                <span class="kpi-subtitle" id="kpiMonthName">-</span>
+                <span class="kpi-trend" id="kpiCreditsTrend"></span>
+              </div>
             </div>
-            
+
             <div class="kpi-card danger">
-              <div class="kpi-icon">📉</div>
-              <div class="kpi-label">Saídas do Mês</div>
+              <div class="kpi-header">
+                <div class="kpi-icon">📉</div>
+                <div class="kpi-label">Saídas do Mês</div>
+              </div>
               <div class="kpi-value" id="kpiMonthDebits">R$ 0,00</div>
-              <div class="kpi-subtitle" id="kpiMonthName2">-</div>
+              <div class="kpi-footer">
+                <span class="kpi-subtitle" id="kpiMonthName2">-</span>
+                <span class="kpi-trend" id="kpiDebitsTrend"></span>
+              </div>
             </div>
-            
+
             <div class="kpi-card warning">
-              <div class="kpi-icon">💵</div>
-              <div class="kpi-label">Saldo do Mês</div>
+              <div class="kpi-header">
+                <div class="kpi-icon">💵</div>
+                <div class="kpi-label">Saldo do Mês</div>
+              </div>
               <div class="kpi-value" id="kpiMonthBalance">R$ 0,00</div>
-              <div class="kpi-subtitle">Entradas - Saídas</div>
+              <div class="kpi-footer">
+                <span class="kpi-subtitle">Entradas - Saídas</span>
+                <span class="kpi-trend" id="kpiBalanceTrend"></span>
+              </div>
             </div>
           </div>
-          
+
+          <!-- KPIs Profissionais -->
+          <div class="kpi-professional-grid">
+            <div class="kpi-professional-card">
+              <div class="kpi-prof-icon">💎</div>
+              <div class="kpi-prof-content">
+                <div class="kpi-prof-label">Taxa de Poupança</div>
+                <div class="kpi-prof-value" id="kpiSavingsRate">0%</div>
+              </div>
+            </div>
+
+            <div class="kpi-professional-card">
+              <div class="kpi-prof-icon">🔥</div>
+              <div class="kpi-prof-content">
+                <div class="kpi-prof-label">Burn Rate (Gasto Diário)</div>
+                <div class="kpi-prof-value" id="kpiBurnRate">R$ 0,00</div>
+              </div>
+            </div>
+
+            <div class="kpi-professional-card">
+              <div class="kpi-prof-icon">🔮</div>
+              <div class="kpi-prof-content">
+                <div class="kpi-prof-label">Projeção Fim do Mês</div>
+                <div class="kpi-prof-value" id="kpiProjectedBalance">R$ 0,00</div>
+              </div>
+            </div>
+
+            <div class="kpi-professional-card">
+              <div class="kpi-prof-icon">🏥</div>
+              <div class="kpi-prof-content">
+                <div class="kpi-prof-label">Saúde Financeira</div>
+                <div class="kpi-prof-health">
+                  <div class="health-bar">
+                    <div class="health-bar-fill" id="kpiHealthBar" style="width: 0%"></div>
+                  </div>
+                  <div class="kpi-prof-value" id="kpiHealthScore">0/100</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Insights Financeiros -->
+          <div class="card insights-card">
+            <div class="card-header">
+              <h2 class="card-title">💡 Insights Financeiros</h2>
+              <button class="btn btn-secondary btn-sm" onclick="refreshInsights()">🔄 Atualizar</button>
+            </div>
+            <div id="insightsContainer" class="insights-container">
+              <div class="insights-loading">Carregando insights...</div>
+            </div>
+          </div>
+
           <!-- Estatísticas Rápidas -->
           <div class="card">
             <div class="card-header">
@@ -1510,7 +1850,7 @@
               <tbody>
                 <tr>
                   <td><strong>Versão</strong></td>
-                  <td>2.0.0</td>
+                  <td>2.2.0 - Dashboard Profissional</td>
                 </tr>
                 <tr>
                   <td><strong>Aplicativo</strong></td>
@@ -1738,13 +2078,43 @@
     function formatCurrency(value) {
       return 'R$ ' + parseFloat(value).toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
     }
-    
+
     function formatDate(dateStr) {
       if (!dateStr) return '';
       const parts = dateStr.split('-');
       return `${parts[2]}/${parts[1]}/${parts[0]}`;
     }
-    
+
+    function toggleDarkMode() {
+      const body = document.body;
+      const isDarkMode = body.classList.toggle('dark-mode');
+
+      // Salvar preferência no localStorage
+      localStorage.setItem('darkMode', isDarkMode ? 'enabled' : 'disabled');
+
+      // Atualizar ícone do botão
+      const icon = document.querySelector('.dark-mode-icon');
+      if (icon) {
+        icon.textContent = '';  // Limpa o conteúdo para permitir que o CSS ::before funcione
+      }
+
+      // Toast de feedback
+      showToast(
+        isDarkMode ? 'Modo escuro ativado 🌙' : 'Modo claro ativado ☀️',
+        'info'
+      );
+    }
+
+    // Verificar preferência salva ao carregar página
+    function initDarkMode() {
+      const darkMode = localStorage.getItem('darkMode');
+      if (darkMode === 'enabled') {
+        document.body.classList.add('dark-mode');
+        const icon = document.querySelector('.dark-mode-icon');
+        if (icon) icon.textContent = '';
+      }
+    }
+
     function escapeHtml(text) {
       const map = {
         '&': '&amp;',
@@ -1769,33 +2139,50 @@
         google.script.run
           .withSuccessHandler(function(result) {
             console.log('Dashboard result:', result);
-            
+
             if (result && result.success && result.data) {
               const { kpis, recentTransactions, topCategories } = result.data;
-              
-              // KPIs
+
+              // KPIs principais
               if (kpis && kpis.total) {
                 document.getElementById('kpiBalance').textContent = formatCurrency(kpis.total.balance);
                 document.getElementById('statTotalTransactions').textContent = kpis.total.transactionCount;
               }
-              
+
               if (kpis && kpis.currentMonth) {
+                const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                                   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+                const monthName = monthNames[kpis.currentMonth.month - 1];
+
                 document.getElementById('kpiMonthCredits').textContent = formatCurrency(kpis.currentMonth.credits);
                 document.getElementById('kpiMonthDebits').textContent = formatCurrency(kpis.currentMonth.debits);
                 document.getElementById('kpiMonthBalance').textContent = formatCurrency(kpis.currentMonth.balance);
-                
-                const monthNames = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
-                                   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
-                const monthName = monthNames[kpis.currentMonth.month - 1];
                 document.getElementById('kpiMonthName').textContent = monthName + '/' + kpis.currentMonth.year;
                 document.getElementById('kpiMonthName2').textContent = monthName + '/' + kpis.currentMonth.year;
               }
-              
+
+              // Tendências
+              if (kpis && kpis.trends) {
+                updateTrendIndicator('kpiCreditsTrend', kpis.trends.creditsTrend, kpis.trends.creditsChangePercent);
+                updateTrendIndicator('kpiDebitsTrend', kpis.trends.debitsTrend, kpis.trends.debitsChangePercent);
+                updateTrendIndicator('kpiBalanceTrend', kpis.trends.balanceTrend, kpis.trends.balanceChangePercent);
+              }
+
+              // KPIs Profissionais
+              if (kpis && kpis.professional) {
+                document.getElementById('kpiSavingsRate').textContent = kpis.professional.savingsRate.toFixed(1) + '%';
+                document.getElementById('kpiBurnRate').textContent = formatCurrency(kpis.professional.burnRate);
+                document.getElementById('kpiProjectedBalance').textContent = formatCurrency(kpis.professional.projectedBalance);
+                document.getElementById('kpiHealthScore').textContent = Math.round(kpis.professional.financialHealth) + '/100';
+                document.getElementById('kpiHealthBar').style.width = kpis.professional.financialHealth + '%';
+              }
+
               renderRecentTransactions(recentTransactions || []);
               renderTopCategories(topCategories || []);
-              
-              // Carrega dados para gráficos
+
+              // Carrega dados para gráficos e insights
               loadCharts();
+              loadInsights();
             }
             loadUpcomingInstallments();
             resolve();
@@ -1807,6 +2194,71 @@
           })
           .getDashboardData(sessionToken);
       });
+    }
+
+    function updateTrendIndicator(elementId, trend, percentChange) {
+      const element = document.getElementById(elementId);
+      if (!element) return;
+
+      let icon = '➡️';
+      let className = '';
+      let text = '';
+
+      if (trend === 'up') {
+        icon = '⬆️';
+        className = 'positive';
+        text = `+${Math.abs(percentChange).toFixed(1)}%`;
+      } else if (trend === 'down') {
+        icon = '⬇️';
+        className = 'negative';
+        text = `-${Math.abs(percentChange).toFixed(1)}%`;
+      } else {
+        text = '0%';
+      }
+
+      element.className = 'kpi-trend ' + className;
+      element.innerHTML = `${icon} ${text}`;
+    }
+
+    function loadInsights() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('Insights result:', result);
+          if (result && result.success && result.data) {
+            renderInsights(result.data);
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Erro ao carregar insights:', error);
+          document.getElementById('insightsContainer').innerHTML =
+            '<div class="insights-loading">Erro ao carregar insights</div>';
+        })
+        .getFinancialInsights(sessionToken);
+    }
+
+    function renderInsights(insights) {
+      const container = document.getElementById('insightsContainer');
+
+      if (!insights || insights.length === 0) {
+        container.innerHTML = '<div class="insights-loading">Nenhum insight disponível no momento</div>';
+        return;
+      }
+
+      container.innerHTML = insights.map(insight => `
+        <div class="insight-item ${insight.type}">
+          <div class="insight-icon">${insight.icon}</div>
+          <div class="insight-content">
+            <div class="insight-title">${insight.title}</div>
+            <div class="insight-message">${insight.message}</div>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function refreshInsights() {
+      document.getElementById('insightsContainer').innerHTML =
+        '<div class="insights-loading">Atualizando insights...</div>';
+      loadInsights();
     }
     
     function loadCharts() {
@@ -1852,11 +2304,17 @@
     function renderEvolutionChart(data) {
       const ctx = document.getElementById('evolutionChart');
       if (!ctx) return;
-      
+
       if (evolutionChart) {
         evolutionChart.destroy();
       }
-      
+
+      // Encontrar valores máximos para anotações
+      const maxBalance = Math.max(...data.map(d => d.balance));
+      const minBalance = Math.min(...data.map(d => d.balance));
+      const maxBalanceIndex = data.findIndex(d => d.balance === maxBalance);
+      const minBalanceIndex = data.findIndex(d => d.balance === minBalance);
+
       evolutionChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -1867,38 +2325,133 @@
               data: data.map(d => d.credits),
               borderColor: '#10b981',
               backgroundColor: 'rgba(16, 185, 129, 0.1)',
-              tension: 0.4
+              borderWidth: 3,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              pointBackgroundColor: '#10b981',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              tension: 0.4,
+              fill: true
             },
             {
               label: 'Saídas',
               data: data.map(d => d.debits),
               borderColor: '#ef4444',
               backgroundColor: 'rgba(239, 68, 68, 0.1)',
-              tension: 0.4
+              borderWidth: 3,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              pointBackgroundColor: '#ef4444',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              tension: 0.4,
+              fill: true
             },
             {
               label: 'Saldo',
               data: data.map(d => d.balance),
               borderColor: '#6366f1',
               backgroundColor: 'rgba(99, 102, 241, 0.1)',
-              tension: 0.4
+              borderWidth: 3,
+              pointRadius: 5,
+              pointHoverRadius: 7,
+              pointBackgroundColor: '#6366f1',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 2,
+              tension: 0.4,
+              fill: true
             }
           ]
         },
         options: {
           responsive: true,
           maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
           plugins: {
             legend: {
               position: 'top',
+              labels: {
+                usePointStyle: true,
+                padding: 15,
+                font: {
+                  size: 13,
+                  weight: '600'
+                }
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.9)',
+              titleColor: '#fff',
+              bodyColor: '#fff',
+              borderColor: '#6366f1',
+              borderWidth: 2,
+              padding: 12,
+              displayColors: true,
+              callbacks: {
+                title: function(context) {
+                  return '📊 ' + context[0].label;
+                },
+                label: function(context) {
+                  const label = context.dataset.label || '';
+                  const value = formatCurrency(context.parsed.y);
+
+                  // Adicionar ícones
+                  let icon = '';
+                  if (label === 'Entradas') icon = '💚 ';
+                  else if (label === 'Saídas') icon = '❤️ ';
+                  else if (label === 'Saldo') icon = '💰 ';
+
+                  return icon + label + ': ' + value;
+                },
+                afterBody: function(context) {
+                  if (context[0].dataIndex > 0) {
+                    const currentData = data[context[0].dataIndex];
+                    const previousData = data[context[0].dataIndex - 1];
+
+                    const balanceChange = currentData.balance - previousData.balance;
+                    const changePercent = previousData.balance !== 0
+                      ? ((balanceChange / Math.abs(previousData.balance)) * 100).toFixed(1)
+                      : '0.0';
+
+                    const arrow = balanceChange > 0 ? '⬆️' : balanceChange < 0 ? '⬇️' : '➡️';
+                    return [
+                      '',
+                      `${arrow} Variação: ${formatCurrency(Math.abs(balanceChange))} (${changePercent}%)`
+                    ];
+                  }
+                  return '';
+                }
+              }
             }
           },
           scales: {
             y: {
               beginAtZero: true,
+              grid: {
+                color: 'rgba(0, 0, 0, 0.05)',
+                drawBorder: false
+              },
               ticks: {
                 callback: function(value) {
                   return 'R$ ' + value.toLocaleString('pt-BR');
+                },
+                font: {
+                  size: 11
+                }
+              }
+            },
+            x: {
+              grid: {
+                display: false
+              },
+              ticks: {
+                font: {
+                  size: 11,
+                  weight: '600'
                 }
               }
             }
@@ -1910,11 +2463,13 @@
     function renderCategoryChart(data) {
       const ctx = document.getElementById('categoryChart');
       if (!ctx) return;
-      
+
       if (categoryChart) {
         categoryChart.destroy();
       }
-      
+
+      const total = data.reduce((sum, d) => sum + d.total, 0);
+
       categoryChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -1932,7 +2487,10 @@
               '#14b8a6',
               '#f97316',
               '#06b6d4'
-            ]
+            ],
+            borderWidth: 3,
+            borderColor: '#fff',
+            hoverOffset: 15
           }]
         },
         options: {
@@ -1941,11 +2499,51 @@
           plugins: {
             legend: {
               position: 'right',
+              labels: {
+                usePointStyle: true,
+                padding: 15,
+                font: {
+                  size: 12,
+                  weight: '600'
+                },
+                generateLabels: function(chart) {
+                  const datasets = chart.data.datasets;
+                  return chart.data.labels.map((label, i) => {
+                    const value = datasets[0].data[i];
+                    const percentage = ((value / total) * 100).toFixed(1);
+                    return {
+                      text: `${label} (${percentage}%)`,
+                      fillStyle: datasets[0].backgroundColor[i],
+                      hidden: false,
+                      index: i
+                    };
+                  });
+                }
+              }
             },
             tooltip: {
+              backgroundColor: 'rgba(0, 0, 0, 0.9)',
+              titleColor: '#fff',
+              bodyColor: '#fff',
+              borderColor: '#6366f1',
+              borderWidth: 2,
+              padding: 12,
+              displayColors: true,
               callbacks: {
+                title: function(context) {
+                  return '🏷️ ' + context[0].label;
+                },
                 label: function(context) {
-                  return context.label + ': R$ ' + context.parsed.toLocaleString('pt-BR');
+                  const value = context.parsed;
+                  const percentage = ((value / total) * 100).toFixed(1);
+                  return [
+                    'Valor: ' + formatCurrency(value),
+                    'Percentual: ' + percentage + '%'
+                  ];
+                },
+                afterLabel: function(context) {
+                  const count = data[context.dataIndex].count || 0;
+                  return 'Transações: ' + count;
                 }
               }
             }
@@ -2733,6 +3331,9 @@ function formatFileSize(bytes) {
    /* ===== INICIALIZAÇÃO ===== */
     
     document.addEventListener('DOMContentLoaded', function() {
+      // Inicializar dark mode
+      initDarkMode();
+
       document.getElementById('loginForm').addEventListener('submit', handleLogin);
       document.getElementById('logoutBtn').addEventListener('click', handleLogout);
       document.getElementById('transactionForm').addEventListener('submit', handleAddTransaction);

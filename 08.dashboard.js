@@ -68,7 +68,7 @@ function getDashboardData(token) {
 function getMainKPIs(token) {
   try {
     console.log('[DASHBOARD] getMainKPIs chamada');
-    
+
     if (!validateSession(token)) {
       console.log('[DASHBOARD] Sessão inválida em getMainKPIs');
       return {
@@ -76,45 +76,39 @@ function getMainKPIs(token) {
         message: 'Sessão inválida ou expirada'
       };
     }
-    
+
     console.log('[DASHBOARD] Listando transações para KPIs...');
     const transactionsResult = listTransactions(token, {});
     console.log('[DASHBOARD] Resultado de listTransactions:', transactionsResult ? 'OK' : 'NULL');
-    
+
     if (!transactionsResult || !transactionsResult.success) {
       console.log('[DASHBOARD] Erro ao listar transações para KPIs');
       return {
         success: false,
         message: 'Erro ao obter transações',
-        data: {
-          total: {
-            credits: 0,
-            debits: 0,
-            balance: 0,
-            transactionCount: 0
-          },
-          currentMonth: {
-            credits: 0,
-            debits: 0,
-            balance: 0,
-            transactionCount: 0,
-            month: new Date().getMonth() + 1,
-            year: new Date().getFullYear()
-          }
-        }
+        data: getEmptyKPIStructure()
       };
     }
-    
+
     const transactions = transactionsResult.data || [];
     console.log('[DASHBOARD] Total de transações para KPIs:', transactions.length);
 
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth() + 1;
+
+    // Mês anterior
+    const previousDate = new Date(currentYear, currentMonth - 2, 1);
+    const previousYear = previousDate.getFullYear();
+    const previousMonth = previousDate.getMonth() + 1;
+
+    // Períodos
     const monthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
     const monthEnd = formatDateDash(now);
+    const prevMonthStart = `${previousYear}-${String(previousMonth).padStart(2, '0')}-01`;
+    const prevMonthEnd = `${previousYear}-${String(previousMonth).padStart(2, '0')}-${new Date(previousYear, previousMonth, 0).getDate()}`;
 
-    // Estrutura de KPIs padrão (valores iniciais seguros)
+    // Estrutura de KPIs expandida
     const kpiData = {
       total: {
         credits: 0,
@@ -132,11 +126,39 @@ function getMainKPIs(token) {
         month: currentMonth,
         year: currentYear,
         installmentDebits: 0,
+        daysElapsed: now.getDate(),
+        daysInMonth: new Date(currentYear, currentMonth, 0).getDate(),
         error: null
+      },
+      previousMonth: {
+        credits: 0,
+        debits: 0,
+        balance: 0,
+        transactionCount: 0,
+        month: previousMonth,
+        year: previousYear
+      },
+      trends: {
+        creditsChange: 0,
+        creditsChangePercent: 0,
+        debitsChange: 0,
+        debitsChangePercent: 0,
+        balanceChange: 0,
+        balanceChangePercent: 0,
+        creditsTrend: 'stable',
+        debitsTrend: 'stable',
+        balanceTrend: 'stable'
+      },
+      professional: {
+        savingsRate: 0,
+        burnRate: 0,
+        projectedBalance: 0,
+        avgDailyExpense: 0,
+        financialHealth: 0
       }
     };
 
-    // KPI 1: Totais gerais (com tratamento de erro individual)
+    // KPI 1: Totais gerais
     try {
       let totalCredits = 0;
       let totalDebits = 0;
@@ -160,7 +182,7 @@ function getMainKPIs(token) {
       logEvent('DASHBOARD', 'WARN', 'getMainKPIs', 'Erro ao calcular totais gerais', error.stack);
     }
 
-    // KPI 2: Mês atual (com tratamento de erro individual)
+    // KPI 2: Mês atual
     try {
       let monthCredits = 0;
       let monthDebits = 0;
@@ -189,7 +211,95 @@ function getMainKPIs(token) {
       logEvent('DASHBOARD', 'WARN', 'getMainKPIs', 'Erro ao calcular dados do mês', error.stack);
     }
 
-    // KPI 3: Débitos parcelados (com tratamento de erro individual)
+    // KPI 3: Mês anterior (para comparação)
+    try {
+      let prevMonthCredits = 0;
+      let prevMonthDebits = 0;
+      let prevMonthCount = 0;
+
+      transactions.forEach(t => {
+        if (t.date >= prevMonthStart && t.date <= prevMonthEnd) {
+          if (t.type === 'credit') {
+            prevMonthCredits += (parseFloat(t.amount) || 0);
+          } else {
+            prevMonthDebits += (parseFloat(t.amount) || 0);
+          }
+          prevMonthCount++;
+        }
+      });
+
+      kpiData.previousMonth.credits = prevMonthCredits;
+      kpiData.previousMonth.debits = prevMonthDebits;
+      kpiData.previousMonth.balance = prevMonthCredits - prevMonthDebits;
+      kpiData.previousMonth.transactionCount = prevMonthCount;
+
+      console.log('[DASHBOARD] KPI Mês Anterior - Balance:', kpiData.previousMonth.balance);
+    } catch (error) {
+      console.error('[DASHBOARD] Erro ao calcular KPI Mês Anterior:', error);
+      logEvent('DASHBOARD', 'WARN', 'getMainKPIs', 'Erro ao calcular mês anterior', error.stack);
+    }
+
+    // KPI 4: Tendências e comparações
+    try {
+      const curr = kpiData.currentMonth;
+      const prev = kpiData.previousMonth;
+
+      // Mudanças absolutas
+      kpiData.trends.creditsChange = curr.credits - prev.credits;
+      kpiData.trends.debitsChange = curr.debits - prev.debits;
+      kpiData.trends.balanceChange = curr.balance - prev.balance;
+
+      // Mudanças percentuais
+      kpiData.trends.creditsChangePercent = prev.credits > 0 ? ((curr.credits - prev.credits) / prev.credits * 100) : 0;
+      kpiData.trends.debitsChangePercent = prev.debits > 0 ? ((curr.debits - prev.debits) / prev.debits * 100) : 0;
+      kpiData.trends.balanceChangePercent = prev.balance !== 0 ? ((curr.balance - prev.balance) / Math.abs(prev.balance) * 100) : 0;
+
+      // Direção da tendência
+      kpiData.trends.creditsTrend = kpiData.trends.creditsChange > 0 ? 'up' : kpiData.trends.creditsChange < 0 ? 'down' : 'stable';
+      kpiData.trends.debitsTrend = kpiData.trends.debitsChange > 0 ? 'up' : kpiData.trends.debitsChange < 0 ? 'down' : 'stable';
+      kpiData.trends.balanceTrend = kpiData.trends.balanceChange > 0 ? 'up' : kpiData.trends.balanceChange < 0 ? 'down' : 'stable';
+
+      console.log('[DASHBOARD] Tendências calculadas');
+    } catch (error) {
+      console.error('[DASHBOARD] Erro ao calcular tendências:', error);
+      logEvent('DASHBOARD', 'WARN', 'getMainKPIs', 'Erro ao calcular tendências', error.stack);
+    }
+
+    // KPI 5: Métricas profissionais
+    try {
+      const curr = kpiData.currentMonth;
+
+      // Taxa de poupança (saving rate)
+      kpiData.professional.savingsRate = curr.credits > 0 ? (curr.balance / curr.credits * 100) : 0;
+
+      // Burn rate (gasto diário médio)
+      kpiData.professional.avgDailyExpense = curr.daysElapsed > 0 ? (curr.debits / curr.daysElapsed) : 0;
+      kpiData.professional.burnRate = kpiData.professional.avgDailyExpense;
+
+      // Projeção de saldo no fim do mês
+      const daysRemaining = curr.daysInMonth - curr.daysElapsed;
+      const projectedDebits = curr.debits + (kpiData.professional.avgDailyExpense * daysRemaining);
+      kpiData.professional.projectedBalance = curr.credits - projectedDebits;
+
+      // Score de saúde financeira (0-100)
+      let healthScore = 50; // Base
+      if (curr.balance > 0) healthScore += 20;
+      if (kpiData.professional.savingsRate > 10) healthScore += 15;
+      if (kpiData.professional.savingsRate > 20) healthScore += 15;
+      if (kpiData.trends.balanceTrend === 'up') healthScore += 10;
+      if (kpiData.trends.debitsTrend === 'down') healthScore += 10;
+      if (curr.balance < 0) healthScore -= 30;
+      if (kpiData.trends.balanceTrend === 'down') healthScore -= 10;
+
+      kpiData.professional.financialHealth = Math.max(0, Math.min(100, healthScore));
+
+      console.log('[DASHBOARD] Métricas profissionais calculadas');
+    } catch (error) {
+      console.error('[DASHBOARD] Erro ao calcular métricas profissionais:', error);
+      logEvent('DASHBOARD', 'WARN', 'getMainKPIs', 'Erro ao calcular métricas profissionais', error.stack);
+    }
+
+    // KPI 6: Débitos parcelados
     try {
       let totalInstallmentDebits = 0;
       let monthInstallmentDebits = 0;
@@ -211,15 +321,14 @@ function getMainKPIs(token) {
     } catch (error) {
       console.error('[DASHBOARD] Erro ao calcular KPI Parcelamento:', error);
       logEvent('DASHBOARD', 'WARN', 'getMainKPIs', 'Erro ao calcular débitos parcelados', error.stack);
-      // Não define erro aqui pois é um KPI "extra", não crítico
     }
-    
+
     return {
       success: true,
       message: 'KPIs obtidos com sucesso',
       data: kpiData
     };
-    
+
   } catch (error) {
     console.error('[DASHBOARD] Erro em getMainKPIs:', error);
     logEvent('DASHBOARD', 'ERROR', 'getMainKPIs', 'Erro ao obter KPIs', error.stack);
@@ -228,6 +337,56 @@ function getMainKPIs(token) {
       message: 'Erro ao obter KPIs: ' + error.message
     };
   }
+}
+
+function getEmptyKPIStructure() {
+  const now = new Date();
+  return {
+    total: {
+      credits: 0,
+      debits: 0,
+      balance: 0,
+      transactionCount: 0,
+      installmentDebits: 0,
+      error: null
+    },
+    currentMonth: {
+      credits: 0,
+      debits: 0,
+      balance: 0,
+      transactionCount: 0,
+      month: now.getMonth() + 1,
+      year: now.getFullYear(),
+      installmentDebits: 0,
+      daysElapsed: now.getDate(),
+      daysInMonth: new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(),
+      error: null
+    },
+    previousMonth: {
+      credits: 0,
+      debits: 0,
+      balance: 0,
+      transactionCount: 0
+    },
+    trends: {
+      creditsChange: 0,
+      creditsChangePercent: 0,
+      debitsChange: 0,
+      debitsChangePercent: 0,
+      balanceChange: 0,
+      balanceChangePercent: 0,
+      creditsTrend: 'stable',
+      debitsTrend: 'stable',
+      balanceTrend: 'stable'
+    },
+    professional: {
+      savingsRate: 0,
+      burnRate: 0,
+      projectedBalance: 0,
+      avgDailyExpense: 0,
+      financialHealth: 0
+    }
+  };
 }
 
 function getRecentTransactions(token, limit) {
@@ -340,6 +499,237 @@ function getMonthNameShort(month) {
   return months[month - 1] || '';
 }
 
+
+/**
+ * Gera insights financeiros automáticos baseados nos dados do usuário
+ *
+ * @param {string} token - Token de sessão
+ * @returns {Object} Lista de insights com tipo, mensagem e nível de importância
+ */
+function getFinancialInsights(token) {
+  try {
+    console.log('[DASHBOARD] getFinancialInsights chamada');
+
+    if (!validateSession(token)) {
+      return {
+        success: false,
+        message: 'Sessão inválida ou expirada',
+        data: []
+      };
+    }
+
+    const insights = [];
+
+    // Obter KPIs
+    const kpisResult = getMainKPIs(token);
+    if (!kpisResult || !kpisResult.success) {
+      return {
+        success: true,
+        message: 'Sem dados suficientes para insights',
+        data: []
+      };
+    }
+
+    const kpis = kpisResult.data;
+    const curr = kpis.currentMonth;
+    const prev = kpis.previousMonth;
+    const trends = kpis.trends;
+    const prof = kpis.professional;
+
+    // Insight 1: Saldo mensal
+    if (curr.balance > 0) {
+      insights.push({
+        type: 'success',
+        icon: '🎉',
+        title: 'Saldo Positivo',
+        message: `Parabéns! Você economizou ${formatCurrency(curr.balance)} este mês.`,
+        importance: 'high'
+      });
+    } else if (curr.balance < 0) {
+      insights.push({
+        type: 'warning',
+        icon: '⚠️',
+        title: 'Atenção ao Saldo',
+        message: `Suas despesas superaram as receitas em ${formatCurrency(Math.abs(curr.balance))} este mês.`,
+        importance: 'high'
+      });
+    }
+
+    // Insight 2: Tendência de gastos
+    if (trends.debitsChangePercent > 20) {
+      insights.push({
+        type: 'alert',
+        icon: '📈',
+        title: 'Gastos em Alta',
+        message: `Seus gastos aumentaram ${Math.abs(trends.debitsChangePercent).toFixed(1)}% comparado ao mês anterior.`,
+        importance: 'high'
+      });
+    } else if (trends.debitsChangePercent < -10) {
+      insights.push({
+        type: 'success',
+        icon: '📉',
+        title: 'Redução de Gastos',
+        message: `Excelente! Você reduziu seus gastos em ${Math.abs(trends.debitsChangePercent).toFixed(1)}% este mês.`,
+        importance: 'medium'
+      });
+    }
+
+    // Insight 3: Taxa de poupança
+    if (prof.savingsRate > 20) {
+      insights.push({
+        type: 'success',
+        icon: '💰',
+        title: 'Excelente Poupança',
+        message: `Sua taxa de poupança está em ${prof.savingsRate.toFixed(1)}% - acima da recomendação de 20%.`,
+        importance: 'medium'
+      });
+    } else if (prof.savingsRate > 0 && prof.savingsRate <= 20) {
+      insights.push({
+        type: 'info',
+        icon: '💡',
+        title: 'Meta de Poupança',
+        message: `Sua taxa de poupança é ${prof.savingsRate.toFixed(1)}%. Tente alcançar 20% para melhor segurança financeira.`,
+        importance: 'low'
+      });
+    } else if (prof.savingsRate <= 0) {
+      insights.push({
+        type: 'warning',
+        icon: '⚠️',
+        title: 'Sem Poupança',
+        message: `Você não conseguiu poupar este mês. Revise seus gastos para criar uma reserva.`,
+        importance: 'high'
+      });
+    }
+
+    // Insight 4: Projeção de fim de mês
+    if (curr.daysElapsed >= 5) {
+      if (prof.projectedBalance < 0 && curr.balance > 0) {
+        insights.push({
+          type: 'warning',
+          icon: '🔮',
+          title: 'Projeção de Déficit',
+          message: `Com base no ritmo atual de gastos, você pode terminar o mês com saldo negativo de ${formatCurrency(Math.abs(prof.projectedBalance))}.`,
+          importance: 'high'
+        });
+      } else if (prof.projectedBalance > curr.balance * 0.8) {
+        insights.push({
+          type: 'success',
+          icon: '🎯',
+          title: 'Projeção Positiva',
+          message: `Mantendo este ritmo, você pode economizar ${formatCurrency(prof.projectedBalance)} até o fim do mês.`,
+          importance: 'medium'
+        });
+      }
+    }
+
+    // Insight 5: Burn rate
+    if (prof.burnRate > 0) {
+      const daysWithCurrentBalance = curr.balance > 0 ? Math.floor(curr.balance / prof.burnRate) : 0;
+      if (daysWithCurrentBalance > 0 && daysWithCurrentBalance < 10) {
+        insights.push({
+          type: 'alert',
+          icon: '🔥',
+          title: 'Velocidade de Gasto Alta',
+          message: `Com seu gasto diário médio de ${formatCurrency(prof.burnRate)}, seu saldo atual duraria apenas ${daysWithCurrentBalance} dias.`,
+          importance: 'high'
+        });
+      } else if (prof.burnRate > 0) {
+        insights.push({
+          type: 'info',
+          icon: '📊',
+          title: 'Gasto Diário',
+          message: `Seu gasto médio diário é de ${formatCurrency(prof.burnRate)}.`,
+          importance: 'low'
+        });
+      }
+    }
+
+    // Insight 6: Comparação de entradas
+    if (trends.creditsChangePercent > 15) {
+      insights.push({
+        type: 'success',
+        icon: '💵',
+        title: 'Receitas em Alta',
+        message: `Suas receitas aumentaram ${trends.creditsChangePercent.toFixed(1)}% em relação ao mês anterior.`,
+        importance: 'medium'
+      });
+    } else if (trends.creditsChangePercent < -15) {
+      insights.push({
+        type: 'warning',
+        icon: '📉',
+        title: 'Queda nas Receitas',
+        message: `Suas receitas caíram ${Math.abs(trends.creditsChangePercent).toFixed(1)}% comparado ao mês anterior.`,
+        importance: 'high'
+      });
+    }
+
+    // Insight 7: Saúde financeira
+    if (prof.financialHealth >= 80) {
+      insights.push({
+        type: 'success',
+        icon: '🌟',
+        title: 'Saúde Financeira Excelente',
+        message: `Sua saúde financeira está em ${prof.financialHealth}/100. Continue assim!`,
+        importance: 'medium'
+      });
+    } else if (prof.financialHealth >= 60) {
+      insights.push({
+        type: 'info',
+        icon: '👍',
+        title: 'Saúde Financeira Boa',
+        message: `Sua saúde financeira está em ${prof.financialHealth}/100. Há espaço para melhorias.`,
+        importance: 'low'
+      });
+    } else if (prof.financialHealth < 40) {
+      insights.push({
+        type: 'alert',
+        icon: '🚨',
+        title: 'Atenção: Saúde Financeira Baixa',
+        message: `Sua saúde financeira está em ${prof.financialHealth}/100. É importante revisar seus gastos.`,
+        importance: 'high'
+      });
+    }
+
+    // Insight 8: Parcelas futuras
+    const upcomingResult = getUpcomingInstallments(token, 1);
+    if (upcomingResult && upcomingResult.success && upcomingResult.count > 0) {
+      const totalUpcoming = upcomingResult.data.reduce((sum, group) => sum + group.totalAmount, 0);
+      insights.push({
+        type: 'info',
+        icon: '📅',
+        title: 'Parcelas no Próximo Mês',
+        message: `Você tem ${upcomingResult.count} grupo(s) de parcelas totalizando ${formatCurrency(totalUpcoming)} vencendo no próximo mês.`,
+        importance: 'medium'
+      });
+    }
+
+    // Ordenar por importância
+    const importanceOrder = { 'high': 1, 'medium': 2, 'low': 3 };
+    insights.sort((a, b) => importanceOrder[a.importance] - importanceOrder[b.importance]);
+
+    console.log('[DASHBOARD] Insights gerados:', insights.length);
+
+    return {
+      success: true,
+      message: `${insights.length} insights gerados`,
+      data: insights,
+      count: insights.length
+    };
+
+  } catch (error) {
+    console.error('[DASHBOARD] Erro em getFinancialInsights:', error);
+    logEvent('DASHBOARD', 'ERROR', 'getFinancialInsights', 'Erro ao gerar insights', error.stack);
+    return {
+      success: false,
+      message: 'Erro ao gerar insights: ' + error.message,
+      data: []
+    };
+  }
+}
+
+function formatCurrency(value) {
+  return 'R$ ' + value.toFixed(2).replace('.', ',').replace(/(\d)(?=(\d{3})+\,)/g, '$1.');
+}
 
 /**
  * =============================================================================
