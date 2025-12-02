@@ -2,7 +2,7 @@
  * =============================================================================
  * SHEETS.GS - Módulo de Operações com Google Sheets
  * =============================================================================
- * 
+ *
  * Responsável por operações básicas de leitura e escrita na planilha:
  * - Obter dados de abas específicas
  * - Adicionar linhas
@@ -10,14 +10,26 @@
  * - Deletar linhas
  * - Buscar registros
  * - Gerar IDs únicos
- * 
+ *
  * Todas as funções incluem validação e tratamento de erros.
  * =============================================================================
  */
 
 /**
+ * Nomes das abas da planilha
+ */
+const SHEET_NAMES = {
+  TRANSACTIONS: 'Transações',
+  CATEGORIES: 'Categorias',
+  SESSIONS: 'Sessões',
+  LOGS: 'Logs',
+  CONFIG: 'Configurações',
+  GOALS: 'Metas'
+};
+
+/**
  * Obtém referência à planilha ativa
- * 
+ *
  * @returns {SpreadsheetApp.Spreadsheet} Planilha ativa
  */
 function getSpreadsheet() {
