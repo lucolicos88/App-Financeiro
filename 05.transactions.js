@@ -815,16 +815,34 @@ function createInstallmentTransactions(token, transactionData) {
         message: validation.message
       };
     }
-    
+
     const sanitized = sanitizeTransactionData(transactionData);
     const installments = parseInt(transactionData.installments);
     const totalAmount = sanitized.amount;
-    
-    // Validar número de parcelas
-    if (installments < 2 || installments > 60) {
+
+    // Validar número de parcelas novamente para garantir que chamadas diretas não quebrem o fluxo
+    if (!Number.isInteger(installments)) {
       return {
         success: false,
-        message: 'Número de parcelas deve estar entre 2 e 60'
+        message: 'Número de parcelas deve ser um número inteiro'
+      };
+    }
+
+    if (installments < 2 || installments > MAX_INSTALLMENTS) {
+      return {
+        success: false,
+        message: `Número de parcelas deve estar entre 2 e ${MAX_INSTALLMENTS}`
+      };
+    }
+
+    // Garantir que o limite máximo de transações não será excedido
+    const currentTransactions = getAllData('Transactions');
+    const currentCount = Array.isArray(currentTransactions) ? currentTransactions.length : 0;
+    if (currentCount + installments > MAX_TRANSACTIONS) {
+      const availableSlots = Math.max(MAX_TRANSACTIONS - currentCount, 0);
+      return {
+        success: false,
+        message: `Limite máximo de ${MAX_TRANSACTIONS} transações atingido. Restam ${availableSlots} vagas disponíveis.`
       };
     }
     
