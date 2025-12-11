@@ -1228,6 +1228,207 @@
         font-size: 18px;
       }
     }
+
+    /* ===== MODAIS PROFISSIONAIS ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.6);
+      z-index: 10000;
+      animation: fadeIn 0.2s ease-out;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .modal-container {
+      background: var(--bg-primary);
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: hidden;
+      animation: modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      position: relative;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .modal-header {
+      padding: 24px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .modal-icon {
+      font-size: 32px;
+      line-height: 1;
+    }
+
+    .modal-title {
+      flex: 1;
+      margin: 0;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 4px;
+      line-height: 1;
+      transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+      color: var(--text-primary);
+    }
+
+    .modal-body {
+      padding: 24px;
+      max-height: calc(90vh - 180px);
+      overflow-y: auto;
+    }
+
+    .modal-message {
+      font-size: 16px;
+      color: var(--text-primary);
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .modal-footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    /* Tipos de modais */
+    .modal-success .modal-header {
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      color: white;
+    }
+
+    .modal-success .modal-title,
+    .modal-success .modal-close {
+      color: white;
+    }
+
+    .modal-error .modal-header {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+    }
+
+    .modal-error .modal-title,
+    .modal-error .modal-close {
+      color: white;
+    }
+
+    .modal-warning .modal-header {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      color: white;
+    }
+
+    .modal-warning .modal-title,
+    .modal-warning .modal-close {
+      color: white;
+    }
+
+    .modal-info .modal-header {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+    }
+
+    .modal-info .modal-title,
+    .modal-info .modal-close {
+      color: white;
+    }
+
+    .modal-confirm .modal-header {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      color: white;
+    }
+
+    .modal-confirm .modal-title,
+    .modal-confirm .modal-close {
+      color: white;
+    }
+
+    /* Botões dos modais */
+    .modal-btn {
+      padding: 10px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      min-width: 100px;
+    }
+
+    .modal-btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .modal-btn-primary:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    .modal-btn-secondary {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+    }
+
+    .modal-btn-secondary:hover {
+      background: var(--border-color);
+    }
+
+    .modal-btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .modal-btn-danger:hover {
+      background: #dc2626;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    }
   </style>
 </head>
 <body>
@@ -1283,6 +1484,7 @@
           <button class="nav-tab" data-tab="transactions">💸 Transações</button>
           <button class="nav-tab" data-tab="categories">🏷️ Categorias</button>
           <button class="nav-tab" data-tab="reports">📈 Relatórios</button>
+          <button class="nav-tab" data-tab="goals">🎯 Metas</button>
           <button class="nav-tab" data-tab="settings">⚙️ Configurações</button>
         </nav>
         
@@ -1771,9 +1973,25 @@
               </div>
             </div>
           </div>
-          
+
         </div>
-        
+
+        <!-- TAB: METAS -->
+        <div id="goalsTab" class="tab-content">
+
+          <!-- Header com botão -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>🎯 Minhas Metas Financeiras</h2>
+            <button class="btn btn-primary" onclick="showCreateGoalModal()">+ Nova Meta</button>
+          </div>
+
+          <!-- Lista de Metas -->
+          <div id="goalsList">
+            <p class="text-muted">Carregando metas...</p>
+          </div>
+
+        </div>
+
         <!-- TAB: CONFIGURAÇÕES -->
         <div id="settingsTab" class="tab-content">
           
@@ -1801,7 +2019,60 @@
               </button>
             </form>
           </div>
-                    <!-- ========== INSERIR AQUI ========== -->
+
+          <!-- Relatórios por Email -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">📧 Relatórios por Email</h2>
+            </div>
+            <form id="emailReportsForm">
+              <div class="form-group">
+                <label class="form-label">
+                  <input type="checkbox" id="emailReportsEnabled"> Ativar envio automático
+                </label>
+              </div>
+              <div class="form-group">
+                <label for="emailReportsFrequency" class="form-label">Frequência</label>
+                <select id="emailReportsFrequency" class="form-input">
+                  <option value="daily">Diário</option>
+                  <option value="weekly">Semanal</option>
+                  <option value="monthly">Mensal</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="emailReportsDay" class="form-label">Dia (1-31 para mensal, 1-7 para semanal)</label>
+                <input type="number" id="emailReportsDay" class="form-input" value="1" min="1" max="31">
+              </div>
+              <div class="form-group">
+                <label for="emailReportsTime" class="form-label">Horário</label>
+                <input type="time" id="emailReportsTime" class="form-input" value="09:00">
+              </div>
+              <div style="display: flex; gap: 12px;">
+                <button type="submit" class="btn btn-primary">💾 Salvar Configurações</button>
+                <button type="button" class="btn btn-secondary" onclick="sendManualEmailReport()">📤 Enviar Agora</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Exportação e Backup -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">💾 Exportação e Backup</h2>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+              <button class="btn btn-secondary" onclick="exportData('csv')">📄 Exportar CSV</button>
+              <button class="btn btn-secondary" onclick="exportData('json')">📋 Exportar JSON</button>
+              <button class="btn btn-secondary" onclick="exportData('excel')">📊 Exportar Excel</button>
+              <button class="btn btn-primary" onclick="createManualBackup()">🔒 Backup Agora</button>
+            </div>
+            <div style="margin-top: 16px;">
+              <label class="form-label">
+                <input type="checkbox" id="autoBackupEnabled"> Backup automático semanal
+              </label>
+            </div>
+            <div id="lastBackupInfo" class="text-muted" style="margin-top: 8px; font-size: 14px;"></div>
+          </div>
+
           <!-- Pasta de Upload -->
           <div class="card">
             <div class="card-header">
@@ -1858,7 +2129,7 @@
               <tbody>
                 <tr>
                   <td><strong>Versão</strong></td>
-                  <td>2.3.0 - PWA + Alertas Inteligentes</td>
+                  <td>2.4.0 - Sistema Completo: Metas, Email, Exportação</td>
                 </tr>
                 <tr>
                   <td><strong>Aplicativo</strong></td>
@@ -1916,8 +2187,25 @@
     </div>
     
   </div>
-  
-  <!-- Toast -->
+
+  <!-- Modais -->
+  <div id="modalOverlay" class="modal-overlay">
+    <div id="modalContainer" class="modal-container">
+      <div class="modal-header" id="modalHeader">
+        <span class="modal-icon" id="modalIcon"></span>
+        <h2 class="modal-title" id="modalTitle"></h2>
+        <button class="modal-close" id="modalClose" onclick="closeModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-message" id="modalMessage"></p>
+      </div>
+      <div class="modal-footer" id="modalFooter">
+        <button class="modal-btn modal-btn-primary" onclick="closeModal()">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast (mantido para compatibilidade) -->
   <div id="toast" class="toast">
     <span id="toastMessage"></span>
   </div>
@@ -2050,16 +2338,18 @@
     function switchTab(tabName) {
       document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-      
+
       document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
       document.getElementById(`${tabName}Tab`).classList.add('active');
-      
+
       if (tabName === 'dashboard') {
         loadDashboard();
       } else if (tabName === 'transactions') {
         loadTransactions();
       } else if (tabName === 'categories') {
         loadCategories();
+      } else if (tabName === 'goals') {
+        loadGoals();
       } else if (tabName === 'settings') {
         loadSettings();
       }
@@ -2068,13 +2358,108 @@
     function showToast(message, type = 'info') {
       const toast = document.getElementById('toast');
       const toastMessage = document.getElementById('toastMessage');
-      
+
       toastMessage.textContent = message;
       toast.className = 'toast show ' + type;
-      
+
       setTimeout(() => toast.classList.remove('show'), 4000);
     }
-    
+
+    /* ===== SISTEMA DE MODAIS PROFISSIONAIS ===== */
+    function showModal(message, type = 'info', title = null, options = {}) {
+      const overlay = document.getElementById('modalOverlay');
+      const container = document.getElementById('modalContainer');
+      const header = document.getElementById('modalHeader');
+      const icon = document.getElementById('modalIcon');
+      const titleEl = document.getElementById('modalTitle');
+      const messageEl = document.getElementById('modalMessage');
+      const footer = document.getElementById('modalFooter');
+
+      // Configurar tipo
+      container.className = 'modal-container modal-' + type;
+
+      // Ícones por tipo
+      const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️',
+        confirm: '❓'
+      };
+
+      // Títulos padrão
+      const titles = {
+        success: 'Sucesso',
+        error: 'Erro',
+        warning: 'Atenção',
+        info: 'Informação',
+        confirm: 'Confirmação'
+      };
+
+      icon.textContent = icons[type] || '📢';
+      titleEl.textContent = title || titles[type] || 'Aviso';
+      messageEl.textContent = message;
+
+      // Configurar botões
+      if (type === 'confirm' || options.confirm) {
+        footer.innerHTML = `
+          <button class="modal-btn modal-btn-secondary" onclick="closeModal(false)">Cancelar</button>
+          <button class="modal-btn modal-btn-primary" onclick="closeModal(true)">Confirmar</button>
+        `;
+      } else {
+        footer.innerHTML = `
+          <button class="modal-btn modal-btn-primary" onclick="closeModal()">OK</button>
+        `;
+      }
+
+      // Mostrar modal
+      overlay.classList.add('show');
+
+      // Callback se fornecido
+      if (options.callback) {
+        window.modalCallback = options.callback;
+      }
+
+      // Fechar ao clicar fora
+      overlay.onclick = function(e) {
+        if (e.target === overlay && !options.preventClose) {
+          closeModal(false);
+        }
+      };
+    }
+
+    function closeModal(result) {
+      const overlay = document.getElementById('modalOverlay');
+      overlay.classList.remove('show');
+
+      // Executar callback se existir
+      if (window.modalCallback && typeof window.modalCallback === 'function') {
+        window.modalCallback(result);
+        window.modalCallback = null;
+      }
+    }
+
+    // Substituir showToast por showModal em novo código
+    function showSuccess(message) {
+      showModal(message, 'success');
+    }
+
+    function showError(message) {
+      showModal(message, 'error');
+    }
+
+    function showWarning(message) {
+      showModal(message, 'warning');
+    }
+
+    function showInfo(message) {
+      showModal(message, 'info');
+    }
+
+    function showConfirm(message, callback, title = 'Confirmação') {
+      showModal(message, 'confirm', title, { callback });
+    }
+
     function showLoading() {
       document.getElementById('loadingOverlay').classList.add('show');
     }
@@ -3712,6 +4097,351 @@ loadDashboard = function() {
     setTimeout(checkFinancialAlerts, 2000);
   });
 };
+
+/* ===== FUNÇÕES DE METAS FINANCEIRAS ===== */
+function loadGoals() {
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.success) {
+        renderGoals(result.data);
+      } else {
+        showError(result.message);
+      }
+    })
+    .withFailureHandler(function(error) {
+      showError('Erro ao carregar metas: ' + error.message);
+    })
+    .getGoals(sessionToken);
+}
+
+function renderGoals(goals) {
+  const container = document.getElementById('goalsList');
+
+  if (!goals || goals.length === 0) {
+    container.innerHTML = '<p class="text-muted">Nenhuma meta criada ainda. Clique em "+ Nova Meta" para começar!</p>';
+    return;
+  }
+
+  let html = '<div style="display: grid; gap: 16px;">';
+
+  goals.forEach(goal => {
+    const progressColor = goal.progress >= 100 ? '#10b981' : goal.progress >= 70 ? '#f59e0b' : '#6366f1';
+    const statusBadge = goal.status === 'completed' ? '<span style="color: #10b981;">✓ Concluída</span>' : '<span style="color: #6366f1;">Em progresso</span>';
+
+    html += `
+      <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+          <div>
+            <h3 style="margin: 0 0 4px 0;">${goal.name}</h3>
+            <p style="margin: 0; color: var(--text-secondary); font-size: 14px;">${goal.category || 'Geral'} • ${statusBadge}</p>
+          </div>
+          <button class="btn btn-danger" style="padding: 6px 12px; font-size: 13px;" onclick="deleteGoalUI('${goal.id}')">🗑️</button>
+        </div>
+        <div style="margin: 12px 0;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span style="font-size: 14px; color: var(--text-secondary);">Progresso</span>
+            <span style="font-weight: 600; color: ${progressColor};">${goal.progress}%</span>
+          </div>
+          <div style="background: var(--bg-secondary); height: 8px; border-radius: 4px; overflow: hidden;">
+            <div style="background: ${progressColor}; height: 100%; width: ${goal.progress}%; transition: width 0.3s;"></div>
+          </div>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 14px;">
+          <div>
+            <span style="color: var(--text-secondary);">Atual:</span>
+            <span style="font-weight: 600;">${formatCurrency(goal.currentAmount)}</span>
+          </div>
+          <div>
+            <span style="color: var(--text-secondary);">Meta:</span>
+            <span style="font-weight: 600;">${formatCurrency(goal.targetAmount)}</span>
+          </div>
+        </div>
+        <div style="margin-top: 8px; font-size: 13px; color: var(--text-secondary);">
+          ${formatDate(goal.startDate)} até ${formatDate(goal.endDate)}
+        </div>
+      </div>
+    `;
+  });
+
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+function showCreateGoalModal() {
+  const message = `
+    <div style="text-align: left;">
+      <form id="createGoalForm" onsubmit="createGoalSubmit(event); return false;">
+        <div class="form-group">
+          <label class="form-label required">Nome da Meta</label>
+          <input type="text" id="goalName" class="form-input" required placeholder="Ex: Economizar para viagem">
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Valor Meta (R$)</label>
+          <input type="number" id="goalAmount" class="form-input" required min="0" step="0.01" placeholder="5000.00">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Categoria</label>
+          <input type="text" id="goalCategory" class="form-input" placeholder="Ex: Viagem">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Tipo de Meta</label>
+          <select id="goalType" class="form-input">
+            <option value="savings">Economia (acumular valor)</option>
+            <option value="spending-limit">Limite de Gastos</option>
+            <option value="category-budget">Orçamento por Categoria</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label required">Data Final</label>
+          <input type="date" id="goalEndDate" class="form-input" required>
+        </div>
+      </form>
+    </div>
+  `;
+
+  const modal = document.getElementById('modalContainer');
+  const overlay = document.getElementById('modalOverlay');
+
+  modal.className = 'modal-container modal-info';
+  document.getElementById('modalIcon').textContent = '🎯';
+  document.getElementById('modalTitle').textContent = 'Nova Meta Financeira';
+  document.getElementById('modalMessage').innerHTML = message;
+  document.getElementById('modalFooter').innerHTML = `
+    <button class="modal-btn modal-btn-secondary" onclick="closeModal()">Cancelar</button>
+    <button class="modal-btn modal-btn-primary" onclick="document.getElementById('createGoalForm').requestSubmit()">Criar Meta</button>
+  `;
+
+  overlay.classList.add('show');
+}
+
+function createGoalSubmit(e) {
+  e.preventDefault();
+
+  const goalData = {
+    name: document.getElementById('goalName').value,
+    targetAmount: parseFloat(document.getElementById('goalAmount').value),
+    category: document.getElementById('goalCategory').value,
+    type: document.getElementById('goalType').value,
+    endDate: document.getElementById('goalEndDate').value
+  };
+
+  showLoading();
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      closeModal();
+      if (result.success) {
+        showSuccess('Meta criada com sucesso!');
+        loadGoals();
+      } else {
+        showError(result.message);
+      }
+    })
+    .withFailureHandler(function(error) {
+      hideLoading();
+      showError('Erro ao criar meta: ' + error.message);
+    })
+    .createGoal(sessionToken, goalData);
+}
+
+function deleteGoalUI(goalId) {
+  showConfirm('Deseja realmente excluir esta meta?', function(confirmed) {
+    if (confirmed) {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          if (result.success) {
+            showSuccess('Meta excluída com sucesso!');
+            loadGoals();
+          } else {
+            showError(result.message);
+          }
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          showError('Erro ao excluir meta: ' + error.message);
+        })
+        .deleteGoal(sessionToken, goalId);
+    }
+  });
+}
+
+/* ===== FUNÇÕES DE CONFIGURAÇÕES ===== */
+function loadSettings() {
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.success) {
+        const settings = result.data;
+
+        // Carregar configurações de email
+        document.getElementById('emailReportsEnabled').checked = settings.emailReportsEnabled || false;
+        document.getElementById('emailReportsFrequency').value = settings.emailReportsFrequency || 'monthly';
+        document.getElementById('emailReportsDay').value = settings.emailReportsDay || 1;
+        document.getElementById('emailReportsTime').value = settings.emailReportsTime || '09:00';
+
+        // Carregar configurações de backup
+        document.getElementById('autoBackupEnabled').checked = settings.autoBackupEnabled || false;
+
+        // Mostrar última data de backup
+        if (settings.lastBackupDate) {
+          const backupDate = new Date(settings.lastBackupDate);
+          document.getElementById('lastBackupInfo').textContent =
+            `Último backup: ${backupDate.toLocaleString('pt-BR')}`;
+        }
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.error('Erro ao carregar configurações:', error);
+    })
+    .getUserSettings(sessionToken);
+}
+
+// Form de configurações de email
+document.getElementById('emailReportsForm')?.addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const settings = {
+    emailReportsEnabled: document.getElementById('emailReportsEnabled').checked,
+    emailReportsFrequency: document.getElementById('emailReportsFrequency').value,
+    emailReportsDay: parseInt(document.getElementById('emailReportsDay').value),
+    emailReportsTime: document.getElementById('emailReportsTime').value
+  };
+
+  showLoading();
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result.success) {
+        showSuccess('Configurações salvas com sucesso!');
+      } else {
+        showError(result.message);
+      }
+    })
+    .withFailureHandler(function(error) {
+      hideLoading();
+      showError('Erro ao salvar configurações: ' + error.message);
+    })
+    .updateUserSettings(sessionToken, settings);
+});
+
+function sendManualEmailReport() {
+  showConfirm('Enviar relatório mensal por email agora?', function(confirmed) {
+    if (confirmed) {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          if (result.success) {
+            showSuccess('Relatório enviado por email com sucesso!');
+          } else {
+            showError(result.message);
+          }
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          showError('Erro ao enviar relatório: ' + error.message);
+        })
+        .sendEmailReport(sessionToken, 'monthly', {});
+    }
+  });
+}
+
+/* ===== FUNÇÕES DE EXPORTAÇÃO ===== */
+function exportData(format) {
+  showLoading();
+
+  const filters = {}; // Pode adicionar filtros de data aqui
+
+  if (format === 'csv') {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        hideLoading();
+        if (result.success) {
+          downloadFile(result.data.csv, result.data.filename, 'text/csv');
+          showSuccess('CSV exportado com sucesso!');
+        } else {
+          showError(result.message);
+        }
+      })
+      .withFailureHandler(function(error) {
+        hideLoading();
+        showError('Erro ao exportar CSV: ' + error.message);
+      })
+      .exportToCSV(sessionToken, filters);
+
+  } else if (format === 'json') {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        hideLoading();
+        if (result.success) {
+          downloadFile(result.data.json, result.data.filename, 'application/json');
+          showSuccess('JSON exportado com sucesso!');
+        } else {
+          showError(result.message);
+        }
+      })
+      .withFailureHandler(function(error) {
+        hideLoading();
+        showError('Erro ao exportar JSON: ' + error.message);
+      })
+      .exportToJSON(sessionToken, filters);
+
+  } else if (format === 'excel') {
+    google.script.run
+      .withSuccessHandler(function(result) {
+        hideLoading();
+        if (result.success) {
+          showInfo('Excel criado! Abrindo em nova aba...');
+          window.open(result.data.url, '_blank');
+        } else {
+          showError(result.message);
+        }
+      })
+      .withFailureHandler(function(error) {
+        hideLoading();
+        showError('Erro ao exportar Excel: ' + error.message);
+      })
+      .exportToExcel(sessionToken, filters);
+  }
+}
+
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function createManualBackup() {
+  showConfirm('Criar backup completo dos dados no Google Drive?', function(confirmed) {
+    if (confirmed) {
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          if (result.success) {
+            showSuccess('Backup criado com sucesso no Google Drive!');
+            loadSettings(); // Recarregar para atualizar data
+          } else {
+            showError(result.message);
+          }
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          showError('Erro ao criar backup: ' + error.message);
+        })
+        .createBackup(sessionToken);
+    }
+  });
+}
 
   </script>
 </body>
