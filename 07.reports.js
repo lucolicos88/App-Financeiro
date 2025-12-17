@@ -117,7 +117,7 @@ function getReportByPeriod(token, startDate, endDate) {
     }
     
     // Obtém transações do período
-    const transactionsResult = listTransactions(token, {
+    const transactionsResult = queryTransactions(token, {
       startDate: startDate,
       endDate: endDate
     });
@@ -366,7 +366,7 @@ function getReportByCategory(token, category, startDate, endDate) {
     if (endDate) filters.endDate = endDate;
     
     // Obtém transações da categoria
-    const transactionsResult = listTransactions(token, filters);
+    const transactionsResult = queryTransactions(token, filters);
     
     if (!transactionsResult.success) {
       return transactionsResult;
@@ -447,7 +447,7 @@ function getTopCategories(token, type, limit, startDate, endDate) {
     if (endDate) filters.endDate = endDate;
     
     // Obtém transações
-    const transactionsResult = listTransactions(token, filters);
+    const transactionsResult = queryTransactions(token, filters);
     
     if (!transactionsResult.success) {
       return transactionsResult;
@@ -510,7 +510,7 @@ function getBalanceEvolution(token, startDate, endDate) {
     }
     
     // Obtém todas as transações até a data final
-    const transactionsResult = listTransactions(token, {
+    const transactionsResult = queryTransactions(token, {
       startDate: startDate,
       endDate: endDate
     });
@@ -698,7 +698,7 @@ function getInstallmentReport(token, startDate, endDate) {
     console.log('[REPORTS] Período:', startDate, 'a', endDate);
     
     // Obtém todas as transações do período
-    const transactionsResult = listTransactions(token, {
+    const transactionsResult = queryTransactions(token, {
       startDate: startDate,
       endDate: endDate
     });
@@ -906,7 +906,7 @@ function getInstallmentProjection(token, months) {
     console.log('[REPORTS] Projeção de', startDate, 'até', endDate);
     
     // Buscar todas as transações parceladas futuras
-    const transactionsResult = listTransactions(token, {
+    const transactionsResult = queryTransactions(token, {
       startDate: startDate,
       endDate: endDate
     });

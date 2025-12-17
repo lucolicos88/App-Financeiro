@@ -142,11 +142,15 @@ function updateUserSettings(token, newSettings) {
     sheet.appendRow(['Chave', 'Valor']);
 
     // Escrever configurações
-    Object.entries(updatedSettings).forEach(([key, value]) => {
-      sheet.appendRow([key, value]);
-    });
+    const entries = Object.entries(updatedSettings)
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+
+    if (entries.length > 0) {
+      sheet.getRange(2, 1, entries.length, 2).setValues(entries.map(([key, value]) => [key, value]));
+    }
 
     console.log('[SETTINGS] Configurações atualizadas');
+    bumpUserDataVersion('settings');
 
     // Se habilitou relatórios por email, criar trigger
     if (newSettings.emailReportsEnabled && !currentSettings.data.emailReportsEnabled) {

@@ -65,7 +65,7 @@ function getDashboardData(token) {
   }
 }
 
-function getMainKPIs(token) {
+function getMainKPIs(token, preloadedTransactions) {
   try {
     console.log('[DASHBOARD] getMainKPIs chamada');
 
@@ -78,7 +78,9 @@ function getMainKPIs(token) {
     }
 
     console.log('[DASHBOARD] Listando transações para KPIs...');
-    const transactionsResult = listTransactions(token, {});
+    const transactionsResult = Array.isArray(preloadedTransactions)
+      ? { success: true, data: preloadedTransactions }
+      : queryTransactions(token, {});
     console.log('[DASHBOARD] Resultado de listTransactions:', transactionsResult ? 'OK' : 'NULL');
 
     if (!transactionsResult || !transactionsResult.success) {
@@ -389,7 +391,7 @@ function getEmptyKPIStructure() {
   };
 }
 
-function getRecentTransactions(token, limit) {
+function getRecentTransactions(token, limit, preloadedTransactions) {
   try {
     console.log('[DASHBOARD] getRecentTransactions chamada, limit:', limit);
     
@@ -403,7 +405,9 @@ function getRecentTransactions(token, limit) {
     if (!limit || limit < 1) limit = 10;
     if (limit > 50) limit = 50;
     
-    const transactionsResult = listTransactions(token, {});
+    const transactionsResult = Array.isArray(preloadedTransactions)
+      ? { success: true, data: preloadedTransactions }
+      : queryTransactions(token, {});
     
     if (!transactionsResult || !transactionsResult.success) {
       console.log('[DASHBOARD] Erro ao listar transações recentes');
@@ -433,7 +437,7 @@ function getRecentTransactions(token, limit) {
   }
 }
 
-function getMonthlyEvolutionChart(token) {
+function getMonthlyEvolutionChart(token, preloadedTransactions) {
   try {
     console.log('[DASHBOARD] getMonthlyEvolutionChart chamada');
     
@@ -444,6 +448,47 @@ function getMonthlyEvolutionChart(token) {
       };
     }
     
+    if (Array.isArray(preloadedTransactions)) {
+      const now = new Date();
+      const chartData = [];
+
+      for (let i = 5; i >= 0; i--) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
+        const lastDay = new Date(year, month, 0).getDate();
+        const endDate = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+
+        let credits = 0;
+        let debits = 0;
+
+        preloadedTransactions.forEach(t => {
+          if (t.date >= startDate && t.date <= endDate) {
+            if (t.type === 'credit') credits += (parseFloat(t.amount) || 0);
+            else debits += (parseFloat(t.amount) || 0);
+          }
+        });
+
+        chartData.push({
+          month: getMonthNameShort(month) + '/' + year,
+          year: year,
+          monthNumber: month,
+          credits: credits,
+          debits: debits,
+          balance: credits - debits
+        });
+      }
+
+      console.log('[DASHBOARD] Dados do grÇ­fico:', chartData.length, 'meses');
+
+      return {
+        success: true,
+        message: 'Dados do grÇ­fico obtidos com sucesso',
+        data: chartData
+      };
+    }
+
     const now = new Date();
     const chartData = [];
     
@@ -506,7 +551,7 @@ function getMonthNameShort(month) {
  * @param {string} token - Token de sessão
  * @returns {Object} Lista de insights com tipo, mensagem e nível de importância
  */
-function getFinancialInsights(token) {
+function getFinancialInsights(token, kpisResultOverride) {
   try {
     console.log('[DASHBOARD] getFinancialInsights chamada');
 
@@ -521,7 +566,7 @@ function getFinancialInsights(token) {
     const insights = [];
 
     // Obter KPIs
-    const kpisResult = getMainKPIs(token);
+    const kpisResult = kpisResultOverride || getMainKPIs(token);
     if (!kpisResult || !kpisResult.success) {
       return {
         success: true,
@@ -744,7 +789,7 @@ function formatCurrency(value) {
  * @param {number} months - Número de meses futuros (padrão: 3)
  * @returns {Object} Lista de parcelas agrupadas
  */
-function getUpcomingInstallments(token, months) {
+function getUpcomingInstallments(token, months, preloadedTransactions) {
   try {
     console.log('[DASHBOARD] getUpcomingInstallments chamada, months:', months);
     
@@ -768,10 +813,12 @@ function getUpcomingInstallments(token, months) {
     
     console.log('[DASHBOARD] Buscando parcelas entre', todayStr, 'e', futureStr);
     
-    const transactionsResult = listTransactions(token, {
-      startDate: todayStr,
-      endDate: futureStr
-    });
+    const transactionsResult = Array.isArray(preloadedTransactions)
+      ? { success: true, data: preloadedTransactions.filter(t => t.date >= todayStr && t.date <= futureStr) }
+      : queryTransactions(token, {
+        startDate: todayStr,
+        endDate: futureStr
+      });
     
     if (!transactionsResult || !transactionsResult.success) {
       console.log('[DASHBOARD] Erro ao buscar parcelas futuras');
@@ -890,7 +937,7 @@ function getPaymentMethodDistribution(token, startDate, endDate) {
     
     console.log('[DASHBOARD] Período:', startDate, 'a', endDate);
     
-    const transactionsResult = listTransactions(token, {
+    const transactionsResult = queryTransactions(token, {
       startDate: startDate,
       endDate: endDate,
       type: 'debit'  // Apenas débitos
@@ -975,7 +1022,7 @@ function getInstallmentStats(token) {
       };
     }
     
-    const transactionsResult = listTransactions(token, {});
+    const transactionsResult = queryTransactions(token, {});
     
     if (!transactionsResult || !transactionsResult.success) {
       return {
@@ -1061,5 +1108,114 @@ function getInstallmentStats(token) {
       success: false,
       message: 'Erro ao obter estatísticas: ' + error.message
     };
+  }
+}
+
+/**
+ * Retorna dados consolidados do dashboard para reduzir round-trips do frontend
+ *
+ * @param {string} token
+ * @returns {Object}
+ */
+function getDashboardBundle(token) {
+  try {
+    if (!validateSession(token)) {
+      return { success: false, message: 'Sessão inválida ou expirada' };
+    }
+
+    const txVersion = getUserDataVersion('transactions');
+    const todayStr = formatDateDash(new Date());
+    const cacheKey = makeCacheKey(`dashboard_bundle_v${txVersion}`, { today: todayStr });
+
+    return getCachedData(cacheKey, function() {
+      const txResult = queryTransactions(token, {});
+      if (!txResult || !txResult.success) {
+        return { success: false, message: txResult ? txResult.message : 'Erro ao carregar transações' };
+      }
+
+      const transactions = txResult.data || [];
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const currentMonth = now.getMonth() + 1;
+      const monthStart = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+
+      const kpisResult = getMainKPIs(token, transactions);
+      const recentResult = getRecentTransactions(token, 10, transactions);
+      const evolutionResult = getMonthlyEvolutionChart(token, transactions);
+      const insightsResult = getFinancialInsights(token, kpisResult);
+      const upcomingResult = getUpcomingInstallments(token, 1, transactions);
+
+      function computeTopCategoriesFromTransactions(transactionsList, type, limit, startDate, endDate) {
+        let list = Array.isArray(transactionsList) ? transactionsList : [];
+        if (startDate) list = list.filter(t => t.date >= startDate);
+        if (endDate) list = list.filter(t => t.date <= endDate);
+        if (type) list = list.filter(t => t.type === type);
+
+        const byCategory = {};
+        list.forEach(t => {
+          const category = t.category || 'Sem categoria';
+          if (!byCategory[category]) {
+            byCategory[category] = { category: category, type: t.type, total: 0, count: 0 };
+          }
+          byCategory[category].total += (parseFloat(t.amount) || 0);
+          byCategory[category].count += 1;
+        });
+
+        const items = Object.values(byCategory).sort((a, b) => b.total - a.total);
+        return items.slice(0, Math.min(Math.max(limit || 5, 1), 20));
+      }
+
+      const topCategoriesMonth = computeTopCategoriesFromTransactions(transactions, null, 5, monthStart, todayStr);
+      const topCategoriesAll = computeTopCategoriesFromTransactions(transactions, null, 10);
+
+      return {
+        success: true,
+        message: 'Dashboard carregado com sucesso',
+        data: {
+          kpis: (kpisResult && kpisResult.data) ? kpisResult.data : {},
+          recentTransactions: (recentResult && recentResult.data) ? recentResult.data : [],
+          topCategories: topCategoriesMonth,
+          topCategoriesMonth: topCategoriesMonth,
+          topCategoriesAll: topCategoriesAll,
+          evolutionChart: (evolutionResult && evolutionResult.data) ? evolutionResult.data : [],
+          insights: (insightsResult && insightsResult.data) ? insightsResult.data : [],
+          upcomingInstallments: (upcomingResult && upcomingResult.data) ? upcomingResult.data : []
+        }
+      };
+    }, 120);
+
+  } catch (error) {
+    console.error('[DASHBOARD] Erro em getDashboardBundle:', error);
+    logEvent('DASHBOARD', 'ERROR', 'getDashboardBundle', 'Erro ao carregar bundle', error.stack);
+    return { success: false, message: 'Erro ao carregar dashboard: ' + error.message };
+  }
+}
+
+/**
+ * Bundle inicial (dashboard + categorias) para reduzir chamadas no load
+ *
+ * @param {string} token
+ * @returns {Object}
+ */
+function getInitialBundle(token) {
+  try {
+    if (!validateSession(token)) {
+      return { success: false, message: 'Sessão inválida ou expirada' };
+    }
+
+    const dashboard = getDashboardBundle(token);
+    const categories = listCategories(token, {});
+
+    return {
+      success: true,
+      message: 'Dados iniciais carregados',
+      data: {
+        dashboard: (dashboard && dashboard.success) ? dashboard.data : null,
+        categories: (categories && categories.success) ? categories.data : []
+      }
+    };
+  } catch (error) {
+    console.error('[DASHBOARD] Erro em getInitialBundle:', error);
+    return { success: false, message: 'Erro ao carregar dados iniciais: ' + error.message };
   }
 }

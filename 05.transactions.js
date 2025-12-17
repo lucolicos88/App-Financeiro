@@ -21,7 +21,7 @@ function createTransaction(token, transactionData) {
     }
 
     // Verifica limite de transações
-    const currentCount = getAllData('Transactions').length;
+    const currentCount = getDataRowCount('Transactions');
     if (currentCount >= MAX_TRANSACTIONS) {
       console.log('[TRANSACTIONS] Limite de transações atingido:', currentCount);
       logEvent('TRANSACTIONS', 'WARN', 'createTransaction', `Limite de ${MAX_TRANSACTIONS} transações atingido`, '');
@@ -79,6 +79,7 @@ const rowData = [
     
     console.log('[TRANSACTIONS] Transação criada com sucesso, ID:', id);
     logEvent('TRANSACTIONS', 'INFO', 'createTransaction', 'Transação criada: ID ' + id, '');
+    bumpUserDataVersion('transactions');
     
     return {
       success: true,
@@ -119,6 +120,108 @@ const rowData = [
  * @param {string} filters.category - Nome da categoria
  * @returns {Object} Resultado com dados paginados
  */
+function queryTransactions(token, filters) {
+  try {
+    if (!validateSession(token)) {
+      return {
+        success: false,
+        message: 'Sessão inválida ou expirada',
+        data: []
+      };
+    }
+
+    const data = getAllData('Transactions');
+
+    if (!data || data.length === 0) {
+      return {
+        success: true,
+        message: 'Nenhuma transação encontrada',
+        data: [],
+        count: 0
+      };
+    }
+
+    let transactions = data.map(row => {
+      if (!row || row.length < 8) {
+        return null;
+      }
+
+      let dateStr = row[1];
+      if (dateStr instanceof Date) {
+        const year = dateStr.getFullYear();
+        const month = String(dateStr.getMonth() + 1).padStart(2, '0');
+        const day = String(dateStr.getDate()).padStart(2, '0');
+        dateStr = `${year}-${month}-${day}`;
+      } else if (typeof dateStr === 'string' && dateStr.includes('T')) {
+        dateStr = dateStr.split('T')[0];
+      }
+
+      const attachmentId = row.length > 8 ? (row[8] || null) : null;
+      const paymentMethod = row.length > 9 ? (row[9] || 'Outros') : 'Outros';
+      const installments = row.length > 10 ? (parseInt(row[10]) || 1) : 1;
+      const installmentNumber = row.length > 11 ? (parseInt(row[11]) || 1) : 1;
+      const parentTransactionId = row.length > 12 ? (row[12] || '') : '';
+
+      return {
+        id: row[0],
+        date: dateStr,
+        type: row[2],
+        category: row[3],
+        description: row[4],
+        amount: parseFloat(row[5]) || 0,
+        createdAt: row[6],
+        updatedAt: row[7],
+        attachmentId: attachmentId,
+        hasAttachment: attachmentId ? true : false,
+        paymentMethod: paymentMethod,
+        installments: installments,
+        installmentNumber: installmentNumber,
+        parentTransactionId: parentTransactionId,
+        isInstallment: parentTransactionId ? true : false
+      };
+    }).filter(t => t !== null);
+
+    if (filters && typeof filters === 'object') {
+      if (filters.startDate) {
+        transactions = transactions.filter(t => t.date >= filters.startDate);
+      }
+
+      if (filters.endDate) {
+        transactions = transactions.filter(t => t.date <= filters.endDate);
+      }
+
+      if (filters.type && (filters.type === 'debit' || filters.type === 'credit')) {
+        transactions = transactions.filter(t => t.type === filters.type);
+      }
+
+      if (filters.category) {
+        transactions = transactions.filter(t => t.category === filters.category);
+      }
+    }
+
+    transactions.sort((a, b) => {
+      if (a.date > b.date) return -1;
+      if (a.date < b.date) return 1;
+      return 0;
+    });
+
+    return {
+      success: true,
+      message: 'Transações obtidas com sucesso',
+      data: transactions,
+      count: transactions.length
+    };
+  } catch (error) {
+    console.error('[TRANSACTIONS] Erro em queryTransactions:', error);
+    logEvent('TRANSACTIONS', 'ERROR', 'queryTransactions', 'Erro ao consultar transações', error.stack);
+    return {
+      success: false,
+      message: 'Erro ao consultar transações: ' + error.message,
+      data: []
+    };
+  }
+}
+
 function listTransactions(token, filters) {
   try {
     console.log('[TRANSACTIONS] listTransactions chamada com filters:', JSON.stringify(filters));
@@ -181,7 +284,7 @@ function listTransactions(token, filters) {
   let installmentNumber = row.length > 11 ? (parseInt(row[11]) || 1) : 1;
   let parentTransactionId = row.length > 12 ? (row[12] || '') : '';
   
-  console.log('[TRANSACTIONS] ID:', row[0], 'AttachmentId:', attachmentId, 'Parcelas:', installmentNumber + '/' + installments);
+  debugLog('[TRANSACTIONS] ID:', row[0], 'AttachmentId:', attachmentId, 'Parcelas:', installmentNumber + '/' + installments);
   
   return {
     id: row[0],
@@ -357,6 +460,7 @@ const rowData = [
     }
     
     logEvent('TRANSACTIONS', 'INFO', 'updateTransaction', 'Transação atualizada: ID ' + id, '');
+    bumpUserDataVersion('transactions');
     
     return {
       success: true,
@@ -421,6 +525,7 @@ function deleteTransaction(token, id) {
     }
     
     logEvent('TRANSACTIONS', 'INFO', 'deleteTransaction', 'Transação deletada: ID ' + id, '');
+    bumpUserDataVersion('transactions');
     
     return {
       success: true,
@@ -604,20 +709,20 @@ function validateCategory(categoryName, type) {
 }
 
 function getTransactionsByPeriod(token, startDate, endDate) {
-  return listTransactions(token, {
+  return queryTransactions(token, {
     startDate: startDate,
     endDate: endDate
   });
 }
 
 function getTransactionsByType(token, type) {
-  return listTransactions(token, {
+  return queryTransactions(token, {
     type: type
   });
 }
 
 function getTransactionsByCategory(token, category) {
-  return listTransactions(token, {
+  return queryTransactions(token, {
     category: category
   });
 }
@@ -687,6 +792,7 @@ function setInitialBalance(token, amount) {
       }
       
       logEvent('TRANSACTIONS', 'INFO', 'setInitialBalance', 'Saldo inicial atualizado: ' + initialAmount, '');
+      bumpUserDataVersion('transactions');
       
       return {
         success: true,
@@ -722,6 +828,7 @@ function setInitialBalance(token, amount) {
       }
       
       logEvent('TRANSACTIONS', 'INFO', 'setInitialBalance', 'Saldo inicial criado: ' + initialAmount, '');
+      bumpUserDataVersion('transactions');
       
       return {
         success: true,
@@ -836,8 +943,7 @@ function createInstallmentTransactions(token, transactionData) {
     }
 
     // Garantir que o limite máximo de transações não será excedido
-    const currentTransactions = getAllData('Transactions');
-    const currentCount = Array.isArray(currentTransactions) ? currentTransactions.length : 0;
+    const currentCount = getDataRowCount('Transactions');
     if (currentCount + installments > MAX_TRANSACTIONS) {
       const availableSlots = Math.max(MAX_TRANSACTIONS - currentCount, 0);
       return {
@@ -910,6 +1016,7 @@ function createInstallmentTransactions(token, transactionData) {
     
     console.log('[TRANSACTIONS] Parcelas criadas com sucesso:', installments);
     logEvent('TRANSACTIONS', 'INFO', 'createInstallmentTransactions', installments + ' parcelas criadas (parent: ' + parentId + ')', '');
+    bumpUserDataVersion('transactions');
     
     // Invalidar cache após criar parcelas
     invalidateCache('transactions_all');
@@ -1086,6 +1193,7 @@ function deleteInstallmentGroup(token, parentId) {
     
     console.log('[TRANSACTIONS] Parcelas deletadas:', deletedCount);
     logEvent('TRANSACTIONS', 'INFO', 'deleteInstallmentGroup', deletedCount + ' parcelas deletadas (parent: ' + parentId + ')', '');
+    bumpUserDataVersion('transactions');
     
     return {
       success: true,

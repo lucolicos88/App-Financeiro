@@ -338,6 +338,8 @@ function uploadTransactionFile(token, transactionId, fileData) {
     logEvent('FILES', 'INFO', 'uploadTransactionFile', 
       `Arquivo anexado à transação ${transactionId}: ${newFileName}`, '');
     
+    bumpUserDataVersion('transactions');
+
     return {
       success: true,
       message: 'Arquivo enviado com sucesso',
@@ -376,23 +378,17 @@ function getTransactionFile(token, transactionId) {
     }
     
     // Busca transação
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName('Transactions');
-    const data = sheet.getDataRange().getValues();
+    const found = findRowById('Transactions', parseInt(transactionId));
     
-    let rowData = null;
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] == transactionId) {
-        rowData = data[i];
-        break;
-      }
-    }
+    // (removido) busca por varredura - usar findRowById
+
     
-    if (!rowData) {
+    if (!found) {
       console.log('[FILES] Transação não encontrada');
       return { success: false, message: 'Transação não encontrada' };
     }
     
+    const rowData = found.data;
     const fileId = rowData[8] ? String(rowData[8]).trim() : null;
     console.log('[FILES] FileId:', fileId);
     
@@ -402,13 +398,6 @@ function getTransactionFile(token, transactionId) {
     
     try {
       const file = DriveApp.getFileById(fileId);
-      
-      // Configura permissões
-      try {
-        file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      } catch (e) {
-        console.warn('[FILES] Não foi possível alterar permissões:', e.message);
-      }
       
       const viewUrl = 'https://drive.google.com/file/d/' + fileId + '/view';
       const downloadUrl = 'https://drive.google.com/uc?export=download&id=' + fileId;
@@ -544,6 +533,8 @@ function removeTransactionFile(token, transactionId) {
     logEvent('FILES', 'INFO', 'removeTransactionFile', 
       `Arquivo removido da transação ${transactionId}`, '');
     
+    bumpUserDataVersion('transactions');
+
     return {
       success: true,
       message: 'Arquivo removido com sucesso'

@@ -346,7 +346,7 @@ function updateAllGoalsProgress(token) {
       if (goal.status !== 'active') return;
 
       // Obter transações no período da meta
-      const transactionsResult = listTransactions(token, {
+      const transactionsResult = queryTransactions(token, {
         startDate: goal.startDate,
         endDate: goal.endDate
       });

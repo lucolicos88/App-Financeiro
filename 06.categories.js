@@ -36,7 +36,7 @@ function createCategory(token, categoryData) {
     }
 
     // Verifica limite de categorias
-    const currentCount = getAllData('Categories').length;
+    const currentCount = getDataRowCount('Categories');
     if (currentCount >= MAX_CATEGORIES) {
       logEvent('CATEGORIES', 'WARN', 'createCategory', `Limite de ${MAX_CATEGORIES} categorias atingido`, '');
       return {
@@ -92,6 +92,7 @@ function createCategory(token, categoryData) {
     
     // Log de sucesso
     logEvent('CATEGORIES', 'INFO', 'createCategory', 'Categoria criada: ID ' + id, '');
+    bumpUserDataVersion('categories');
     
     return {
       success: true,
@@ -142,6 +143,10 @@ function listCategories(token, filters) {
         data: []
       };
     }
+
+    const version = getUserDataVersion('categories');
+    const cacheKey = makeCacheKey(`categories_v${version}`, { filters: filters || {} });
+    return getCachedData(cacheKey, function() {
 
     // Parâmetros de paginação
     const page = (filters && filters.page && filters.page > 0) ? parseInt(filters.page) : 1;
@@ -209,6 +214,8 @@ function listCategories(token, filters) {
       pageSize: pageSize,
       totalPages: totalPages
     };
+
+    }, 300);
     
   } catch (error) {
     logEvent('CATEGORIES', 'ERROR', 'listCategories', 'Erro ao listar categorias', error.stack);
@@ -314,6 +321,7 @@ function updateCategory(token, id, categoryData) {
     
     // Log de sucesso
     logEvent('CATEGORIES', 'INFO', 'updateCategory', 'Categoria atualizada: ID ' + id, '');
+    bumpUserDataVersion('categories');
     
     return {
       success: true,
@@ -389,6 +397,7 @@ function setCategoryStatus(token, id, isActive, actionName) {
 
     // Log de sucesso
     logEvent('CATEGORIES', 'INFO', actionName, `Categoria ${isActive ? 'ativada' : 'desativada'}: ID ${id}`, '');
+    bumpUserDataVersion('categories');
 
     return {
       success: true,

@@ -31,7 +31,7 @@ function exportToCSV(token, filters) {
       };
     }
 
-    const transactionsResult = listTransactions(token, filters || {});
+    const transactionsResult = queryTransactions(token, filters || {});
     if (!transactionsResult.success) {
       return transactionsResult;
     }
@@ -95,7 +95,7 @@ function exportToJSON(token, filters) {
       };
     }
 
-    const transactionsResult = listTransactions(token, filters || {});
+    const transactionsResult = queryTransactions(token, filters || {});
     if (!transactionsResult.success) {
       return transactionsResult;
     }
@@ -148,7 +148,7 @@ function exportToExcel(token, filters) {
       };
     }
 
-    const transactionsResult = listTransactions(token, filters || {});
+    const transactionsResult = queryTransactions(token, filters || {});
     if (!transactionsResult.success) {
       return transactionsResult;
     }

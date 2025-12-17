@@ -477,6 +477,97 @@ function clearAllCache() {
  * @param {number} months - Número de meses a adicionar
  * @returns {Date} Nova data
  */
+/**
+ * =============================================================================
+ * CACHE/CONFIG HELPERS
+ * =============================================================================
+ */
+
+/**
+ * Retorna se debug estÃ¡ habilitado (ScriptProperties: DEBUG=true)
+ *
+ * @returns {boolean}
+ */
+function isDebugEnabled() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    return props.getProperty('DEBUG') === 'true';
+  } catch (error) {
+    return false;
+  }
+}
+
+function debugLog() {
+  if (!isDebugEnabled()) return;
+  try {
+    console.log.apply(console, arguments);
+  } catch (error) {
+    // ignore
+  }
+}
+
+/**
+ * Gera chave curta/estÃ¡vel de cache (evita estourar limite de tamanho de key)
+ *
+ * @param {string} namespace
+ * @param {Object} params
+ * @returns {string}
+ */
+function makeCacheKey(namespace, params) {
+  const payload = JSON.stringify(params || {});
+  const digest = hashString(payload).substring(0, 16);
+  return `${namespace}_${digest}`;
+}
+
+/**
+ * VersÃ£o de dados por usuÃ¡rio (para invalidar caches de forma confiÃ¡vel)
+ *
+ * @param {string} namespace
+ * @returns {number}
+ */
+function getUserDataVersion(namespace) {
+  namespace = namespace || 'default';
+  const key = `data_version_${namespace}`;
+
+  try {
+    const props = PropertiesService.getUserProperties();
+    const raw = props.getProperty(key);
+    const num = parseInt(raw || '1', 10);
+    return Number.isFinite(num) && num > 0 ? num : 1;
+  } catch (error) {
+    return 1;
+  }
+}
+
+/**
+ * Incrementa versÃ£o de dados (use apÃ³s mutaÃ§Ãµes relevantes)
+ *
+ * @param {string} namespace
+ * @returns {number} nova versÃ£o
+ */
+function bumpUserDataVersion(namespace) {
+  namespace = namespace || 'default';
+  const key = `data_version_${namespace}`;
+  const lock = LockService.getUserLock();
+
+  try {
+    lock.waitLock(10000);
+    const props = PropertiesService.getUserProperties();
+    const current = getUserDataVersion(namespace);
+    const next = current + 1;
+    props.setProperty(key, String(next));
+    return next;
+  } catch (error) {
+    return getUserDataVersion(namespace);
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (e) {
+      // ignore
+    }
+  }
+}
+
 function addMonths(date, months) {
   const d = new Date(date);
   const day = d.getDate();

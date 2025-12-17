@@ -93,6 +93,25 @@ function getAllData(sheetName) {
 }
 
 /**
+ * Obtém a quantidade de linhas de dados (exclui cabeçalho)
+ *
+ * @param {string} sheetName - Nome da aba
+ * @returns {number} Quantidade de linhas (>= 0)
+ */
+function getDataRowCount(sheetName) {
+  try {
+    const sheet = getSheet(sheetName);
+    if (!sheet) return 0;
+
+    const lastRow = sheet.getLastRow();
+    return Math.max(0, lastRow - 1);
+  } catch (error) {
+    console.error('[SHEETS] Erro ao obter quantidade de linhas:', error);
+    return 0;
+  }
+}
+
+/**
  * Obtém cabeçalhos de uma aba
  * 
  * @param {string} sheetName - Nome da aba
@@ -227,20 +246,37 @@ function findRowById(sheetName, id) {
     if (!sheet) {
       return null;
     }
-    
-    const data = sheet.getDataRange().getValues();
-    
-    // Procura por ID (primeira coluna)
-    for (let i = 1; i < data.length; i++) {
-      if (data[i][0] === id || data[i][0] === parseInt(id)) {
-        return {
-          rowIndex: i + 1,
-          data: data[i]
-        };
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return null;
+
+    // Busca rápida apenas na coluna de ID (evita ler a planilha inteira)
+    try {
+      const finder = sheet
+        .getRange(2, 1, lastRow - 1, 1)
+        .createTextFinder(String(id))
+        .matchEntireCell(true);
+
+      const foundRange = finder.findNext();
+      if (!foundRange) return null;
+
+      const rowIndex = foundRange.getRow();
+      const row = sheet.getRange(rowIndex, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+      return { rowIndex: rowIndex, data: row };
+    } catch (finderError) {
+      // Fallback: busca por varredura (compatibilidade)
+      const data = sheet.getDataRange().getValues();
+      for (let i = 1; i < data.length; i++) {
+        if (data[i][0] === id || data[i][0] === parseInt(id)) {
+          return {
+            rowIndex: i + 1,
+            data: data[i]
+          };
+        }
       }
+      return null;
     }
-    
-    return null;
     
   } catch (error) {
     console.error('[SHEETS] Erro ao buscar linha por ID:', error);

@@ -1828,6 +1828,11 @@
                 </tbody>
               </table>
             </div>
+            <div id="transactionsPagination" class="hidden" style="display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-top:1px solid var(--border); gap:12px;">
+              <button id="txPrevBtn" class="btn btn-secondary btn-sm" onclick="prevTransactionsPage()">Anterior</button>
+              <span id="transactionsPageInfo" class="text-muted"></span>
+              <button id="txNextBtn" class="btn btn-secondary btn-sm" onclick="nextTransactionsPage()">Próxima</button>
+            </div>
           </div>
           
         </div>
@@ -2271,6 +2276,9 @@
     let currentCategories = [];
     let evolutionChart = null;
     let categoryChart = null;
+    let currentTransactionFilters = {};
+    let currentTransactionsPage = 1;
+    const TRANSACTIONS_PAGE_SIZE = 50;
     
     /* ===== AUTENTICAÇÃO ===== */
     
@@ -2523,10 +2531,81 @@
     
     function loadInitialData() {
       showLoading();
-      Promise.all([loadDashboard(), loadCategories()])
-        .finally(() => hideLoading());
+      return new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(function(result) {
+            if (result && result.success && result.data) {
+              if (result.data.categories) {
+                currentCategories = result.data.categories || [];
+                renderCategories(currentCategories);
+                updateCategorySelects(currentCategories);
+                document.getElementById('statCategories').textContent = currentCategories.filter(c => c.isActive).length;
+              }
+
+              if (result.data.dashboard) {
+                renderDashboardBundleData(result.data.dashboard);
+              }
+            }
+            resolve();
+          })
+          .withFailureHandler(function(error) {
+            console.error('Erro ao carregar dados iniciais:', error);
+            reject(error);
+          })
+          .getInitialBundle(sessionToken);
+      }).finally(() => hideLoading());
     }
     
+    function renderDashboardBundleData(data) {
+      if (!data) return;
+
+      const kpis = data.kpis || {};
+
+      // KPIs principais
+      if (kpis.total) {
+        document.getElementById('kpiBalance').textContent = formatCurrency(kpis.total.balance);
+        document.getElementById('statTotalTransactions').textContent = kpis.total.transactionCount;
+      }
+
+      if (kpis.currentMonth) {
+        const monthNames = ['Janeiro', 'Fevereiro', 'MarÇõo', 'Abril', 'Maio', 'Junho',
+                           'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+        const monthName = monthNames[kpis.currentMonth.month - 1];
+
+        document.getElementById('kpiMonthCredits').textContent = formatCurrency(kpis.currentMonth.credits);
+        document.getElementById('kpiMonthDebits').textContent = formatCurrency(kpis.currentMonth.debits);
+        document.getElementById('kpiMonthBalance').textContent = formatCurrency(kpis.currentMonth.balance);
+        document.getElementById('kpiMonthName').textContent = monthName + '/' + kpis.currentMonth.year;
+        document.getElementById('kpiMonthName2').textContent = monthName + '/' + kpis.currentMonth.year;
+      }
+
+      // Tendências
+      if (kpis.trends) {
+        updateTrendIndicator('kpiCreditsTrend', kpis.trends.creditsTrend, kpis.trends.creditsChangePercent);
+        updateTrendIndicator('kpiDebitsTrend', kpis.trends.debitsTrend, kpis.trends.debitsChangePercent);
+        updateTrendIndicator('kpiBalanceTrend', kpis.trends.balanceTrend, kpis.trends.balanceChangePercent);
+      }
+
+      // KPIs Profissionais
+      if (kpis.professional) {
+        document.getElementById('kpiSavingsRate').textContent = kpis.professional.savingsRate.toFixed(1) + '%';
+        document.getElementById('kpiBurnRate').textContent = formatCurrency(kpis.professional.burnRate);
+        document.getElementById('kpiProjectedBalance').textContent = formatCurrency(kpis.professional.projectedBalance);
+        document.getElementById('kpiHealthScore').textContent = Math.round(kpis.professional.financialHealth) + '/100';
+        document.getElementById('kpiHealthBar').style.width = kpis.professional.financialHealth + '%';
+      }
+
+      renderRecentTransactions(data.recentTransactions || []);
+      renderTopCategories(data.topCategories || []);
+
+      if (data.evolutionChart) renderEvolutionChart(data.evolutionChart);
+      if (data.topCategoriesAll) renderCategoryChart(data.topCategoriesAll);
+      if (data.insights) renderInsights(data.insights);
+      const upcoming = data.upcomingInstallments || [];
+      document.getElementById('upcomingInstallmentsCard').style.display = upcoming.length ? 'block' : 'none';
+      if (upcoming.length) renderUpcomingInstallments(upcoming);
+    }
+
     function loadDashboard() {
       return new Promise((resolve, reject) => {
         google.script.run
@@ -2574,10 +2653,13 @@
               renderTopCategories(topCategories || []);
 
               // Carrega dados para gráficos e insights
-              loadCharts();
-              loadInsights();
+              if (result.data.evolutionChart) renderEvolutionChart(result.data.evolutionChart);
+              if (result.data.topCategoriesAll) renderCategoryChart(result.data.topCategoriesAll);
+              if (result.data.insights) renderInsights(result.data.insights);
+              const upcoming = result.data.upcomingInstallments || [];
+              document.getElementById('upcomingInstallmentsCard').style.display = upcoming.length ? 'block' : 'none';
+              if (upcoming.length) renderUpcomingInstallments(upcoming);
             }
-            loadUpcomingInstallments();
             resolve();
           })
           .withFailureHandler(function(error) {
@@ -2585,7 +2667,7 @@
             showToast('Erro ao carregar dashboard', 'error');
             reject(error);
           })
-          .getDashboardData(sessionToken);
+          .getDashboardBundle(sessionToken);
       });
     }
 
@@ -2972,6 +3054,16 @@
     
     function loadTransactions(filters = {}) {
       console.log('Loading transactions with filters:', filters);
+
+      currentTransactionFilters = { ...(filters || {}) };
+      currentTransactionsPage = currentTransactionFilters.page ? parseInt(currentTransactionFilters.page) : (currentTransactionsPage || 1);
+      delete currentTransactionFilters.page;
+
+      const requestFilters = {
+        ...currentTransactionFilters,
+        page: currentTransactionsPage,
+        pageSize: TRANSACTIONS_PAGE_SIZE
+      };
       
       google.script.run
         .withSuccessHandler(function(result) {
@@ -2980,7 +3072,8 @@
           if (result && result.success) {
             currentTransactions = result.data || [];
             renderTransactions(currentTransactions);
-            document.getElementById('transactionCount').textContent = (result.count || 0) + ' transações';
+            document.getElementById('transactionCount').textContent = (result.total || result.count || 0) + ' transações';
+            updateTransactionsPagination(result);
           } else {
             showToast('Erro ao carregar transações', 'error');
           }
@@ -2989,9 +3082,40 @@
           console.error('Erro ao carregar transações:', error);
           showToast('Erro ao carregar transações: ' + error.message, 'error');
         })
-        .listTransactions(sessionToken, filters);
+        .listTransactions(sessionToken, requestFilters);
     }
     
+    function updateTransactionsPagination(result) {
+      const container = document.getElementById('transactionsPagination');
+      const info = document.getElementById('transactionsPageInfo');
+      const prevBtn = document.getElementById('txPrevBtn');
+      const nextBtn = document.getElementById('txNextBtn');
+
+      const page = result.page || 1;
+      const totalPages = result.totalPages || 1;
+
+      if (totalPages <= 1) {
+        container.classList.add('hidden');
+        return;
+      }
+
+      container.classList.remove('hidden');
+      info.textContent = `Página ${page} de ${totalPages}`;
+      prevBtn.disabled = page <= 1;
+      nextBtn.disabled = page >= totalPages;
+    }
+
+    function prevTransactionsPage() {
+      if (currentTransactionsPage <= 1) return;
+      currentTransactionsPage -= 1;
+      loadTransactions({ ...currentTransactionFilters, page: currentTransactionsPage });
+    }
+
+    function nextTransactionsPage() {
+      currentTransactionsPage += 1;
+      loadTransactions({ ...currentTransactionFilters, page: currentTransactionsPage });
+    }
+
     function renderTransactions(transactions) {
   const tbody = document.getElementById('transactionsTableBody');
   
@@ -3219,6 +3343,7 @@
       if (category) filters.category = category;
       
       console.log('Applying filters:', filters);
+      currentTransactionsPage = 1;
       loadTransactions(filters);
     }
     
@@ -3227,6 +3352,7 @@
       document.getElementById('filterEndDate').value = '';
       document.getElementById('filterType').value = '';
       document.getElementById('filterCategory').value = '';
+      currentTransactionsPage = 1;
       loadTransactions();
     }
     

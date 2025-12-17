@@ -69,7 +69,7 @@ function testarSistemaCompleto() {
   
   // 2. Listar Transações
   console.log('\n2. TESTANDO LISTAR TRANSAÇÕES...');
-  const txResult = listTransactions(token, {});
+  const txResult = queryTransactions(token, {});
   console.log('Transactions result:', JSON.stringify(txResult));
   
   if (!txResult) {
