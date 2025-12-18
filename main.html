@@ -1804,9 +1804,14 @@
           
           <!-- Lista -->
           <div class="card">
-            <div class="card-header">
-              <h2 class="card-title">📋 Todas as Transações</h2>
-              <span id="transactionCount" class="text-muted">0 transações</span>
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+              <div>
+                <h2 class="card-title">📋 Todas as Transações</h2>
+                <span id="transactionCount" class="text-muted">0 transações</span>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-secondary btn-sm" onclick="openImportStatementModal()">📥 Importar Extrato (CSV)</button>
+              </div>
             </div>
             <div class="table-container">
               <table class="table">
@@ -2269,6 +2274,149 @@
     </div>
   </div>
   
+  <!-- Modal Importar Extrato -->
+  <div id="importStatementModal" class="modal">
+    <div class="modal-content" style="max-width: 980px;">
+      <div class="modal-header">
+        <h3 class="modal-title">📥 Importar Extrato (CSV)</h3>
+        <button class="modal-close" onclick="closeImportStatementModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="card" style="margin:0;">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label required">Arquivo CSV</label>
+              <input type="file" id="importCsvFile" class="form-input" accept=".csv,text/csv" onchange="handleImportCsvFileChange(event)">
+              <small class="text-muted">Exportar do banco como CSV (preferencialmente com cabeçalho).</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fonte (Banco/App)</label>
+              <input type="text" id="importSource" class="form-input" placeholder="Ex: Nubank, Itaú, Inter">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Conta/Cartão</label>
+              <input type="text" id="importAccount" class="form-input" placeholder="Ex: Conta Principal">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Delimitador</label>
+              <select id="importDelimiter" class="form-select">
+                <option value="">Auto</option>
+                <option value=",">Vírgula (,)</option>
+                <option value=";">Ponto e vírgula (;)</option>
+                <option value="\\t">Tab</option>
+              </select>
+            </div>
+            <div class="form-group" style="display:flex; align-items:flex-end;">
+              <label class="form-label" style="margin-bottom: 0;">
+                <input type="checkbox" id="importHasHeader" checked> Primeira linha é cabeçalho
+              </label>
+            </div>
+            <div class="form-group" style="display:flex; gap:8px; align-items:flex-end; justify-content:flex-end;">
+              <button class="btn btn-secondary" id="importAnalyzeBtn" onclick="analyzeImportCsv()" disabled>Analisar</button>
+              <button class="btn btn-primary" id="importPreviewBtn" onclick="previewImportCsv()" disabled>Prévia</button>
+            </div>
+          </div>
+
+          <div id="importMappingSection" class="hidden" style="margin-top: 12px;">
+            <h4 style="margin: 0 0 8px 0;">Mapeamento de colunas</h4>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label required">Data</label>
+                <select id="importMapDate" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label required">Descrição</label>
+                <select id="importMapDescription" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Valor (com sinal)</label>
+                <select id="importMapAmount" class="form-select"></select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Débito (coluna separada)</label>
+                <select id="importMapDebit" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Crédito (coluna separada)</label>
+                <select id="importMapCredit" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Categoria (opcional)</label>
+                <select id="importMapCategory" class="form-select"></select>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Tipo (opcional)</label>
+                <select id="importMapType" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Forma de pagamento (opcional)</label>
+                <select id="importMapPaymentMethod" class="form-select"></select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Categorias padrão</label>
+                <div style="display:flex; gap:8px;">
+                  <select id="importDefaultDebitCategory" class="form-select" title="Categoria padrão (Débito)"></select>
+                  <select id="importDefaultCreditCategory" class="form-select" title="Categoria padrão (Crédito)"></select>
+                </div>
+                <small class="text-muted">Use “A revisar” para importar e categorizar depois.</small>
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Forma de pagamento padrão</label>
+                <select id="importDefaultPaymentMethod" class="form-select">
+                  <option value="Outros">Outros</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Débito">Débito</option>
+                  <option value="Crédito à vista">Crédito à vista</option>
+                  <option value="Crédito parcelado">Crédito parcelado</option>
+                  <option value="PIX">PIX</option>
+                  <option value="Boleto">Boleto</option>
+                  <option value="Transferência">Transferência</option>
+                </select>
+              </div>
+              <div class="form-group" style="display:flex; align-items:flex-end; justify-content:flex-end; gap:8px;">
+                <button class="btn btn-success" id="importCommitBtn" onclick="commitImportCsv()" disabled>Importar</button>
+              </div>
+            </div>
+          </div>
+
+          <div id="importPreviewSection" class="hidden" style="margin-top: 12px;">
+            <div class="text-muted" id="importPreviewSummary" style="margin-bottom: 8px;"></div>
+            <div class="table-container" style="max-height: 360px;">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th class="text-center">Importar</th>
+                    <th>Data</th>
+                    <th>Tipo</th>
+                    <th>Descrição</th>
+                    <th class="text-right">Valor</th>
+                    <th>Categoria</th>
+                    <th>Pgto</th>
+                    <th>Problemas</th>
+                  </tr>
+                </thead>
+                <tbody id="importPreviewBody"></tbody>
+              </table>
+            </div>
+            <small class="text-muted">A prévia mostra as primeiras 200 linhas. O restante seguirá os defaults selecionados.</small>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeImportStatementModal()">Fechar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     /* ===== VARIÁVEIS GLOBAIS ===== */
     let sessionToken = null;
@@ -3270,6 +3418,335 @@
     
     function closeEditModal() {
       document.getElementById('editTransactionModal').classList.remove('show');
+    }
+
+    /* ===== IMPORTAÇÃO DE EXTRATO (CSV) ===== */
+    let importCsvText = '';
+    let importCsvAnalysis = null;
+    let importCsvPreview = null;
+
+    function openImportStatementModal() {
+      if (!sessionToken) {
+        showToast('Faça login primeiro', 'error');
+        return;
+      }
+
+      importCsvText = '';
+      importCsvAnalysis = null;
+      importCsvPreview = null;
+
+      document.getElementById('importCsvFile').value = '';
+      document.getElementById('importAnalyzeBtn').disabled = true;
+      document.getElementById('importPreviewBtn').disabled = true;
+      document.getElementById('importCommitBtn').disabled = true;
+
+      document.getElementById('importMappingSection').classList.add('hidden');
+      document.getElementById('importPreviewSection').classList.add('hidden');
+      document.getElementById('importPreviewBody').innerHTML = '';
+      document.getElementById('importPreviewSummary').textContent = '';
+
+      // Defaults (inclui "A revisar" mesmo que não exista ainda)
+      populateDefaultCategorySelect('importDefaultDebitCategory', 'debit');
+      populateDefaultCategorySelect('importDefaultCreditCategory', 'credit');
+
+      document.getElementById('importStatementModal').classList.add('show');
+    }
+
+    function closeImportStatementModal() {
+      document.getElementById('importStatementModal').classList.remove('show');
+    }
+
+    function handleImportCsvFileChange(event) {
+      const file = event && event.target && event.target.files ? event.target.files[0] : null;
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        importCsvText = String(e.target.result || '');
+        document.getElementById('importAnalyzeBtn').disabled = !importCsvText;
+        document.getElementById('importPreviewBtn').disabled = true;
+        document.getElementById('importCommitBtn').disabled = true;
+        document.getElementById('importMappingSection').classList.add('hidden');
+        document.getElementById('importPreviewSection').classList.add('hidden');
+        document.getElementById('importPreviewBody').innerHTML = '';
+        document.getElementById('importPreviewSummary').textContent = '';
+      };
+      reader.onerror = function() {
+        showToast('Erro ao ler arquivo', 'error');
+      };
+      reader.readAsText(file);
+    }
+
+    function analyzeImportCsv() {
+      if (!importCsvText) {
+        showToast('Selecione um CSV primeiro', 'error');
+        return;
+      }
+
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          if (!result || !result.success) {
+            showToast((result && result.message) || 'Falha ao analisar CSV', 'error');
+            return;
+          }
+
+          importCsvAnalysis = result.data;
+          const headers = importCsvAnalysis.headers || [];
+
+          if (!document.getElementById('importDelimiter').value && importCsvAnalysis.delimiter) {
+            document.getElementById('importDelimiter').value = importCsvAnalysis.delimiter === '\t' ? '\\t' : importCsvAnalysis.delimiter;
+          }
+
+          document.getElementById('importHasHeader').checked = importCsvAnalysis.hasHeader !== false;
+
+          fillImportColumnSelect('importMapDate', headers, importCsvAnalysis.mappingSuggestion?.dateCol, false);
+          fillImportColumnSelect('importMapDescription', headers, importCsvAnalysis.mappingSuggestion?.descriptionCol, false);
+          fillImportColumnSelect('importMapAmount', headers, importCsvAnalysis.mappingSuggestion?.amountCol, true);
+          fillImportColumnSelect('importMapDebit', headers, importCsvAnalysis.mappingSuggestion?.debitCol, true);
+          fillImportColumnSelect('importMapCredit', headers, importCsvAnalysis.mappingSuggestion?.creditCol, true);
+          fillImportColumnSelect('importMapType', headers, importCsvAnalysis.mappingSuggestion?.typeCol, true);
+          fillImportColumnSelect('importMapCategory', headers, importCsvAnalysis.mappingSuggestion?.categoryCol, true);
+          fillImportColumnSelect('importMapPaymentMethod', headers, importCsvAnalysis.mappingSuggestion?.paymentMethodCol, true);
+
+          document.getElementById('importMappingSection').classList.remove('hidden');
+          document.getElementById('importPreviewBtn').disabled = false;
+
+          showToast('CSV analisado. Ajuste o mapeamento e gere a prévia.', 'success');
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          console.error('Erro ao analisar CSV:', error);
+          showToast('Erro ao analisar CSV: ' + error.message, 'error');
+        })
+        .statementImportAnalyze(sessionToken, importCsvText);
+    }
+
+    function previewImportCsv() {
+      if (!importCsvText) {
+        showToast('Selecione um CSV primeiro', 'error');
+        return;
+      }
+
+      const options = buildImportOptionsFromUI();
+      if (!options) return;
+
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          if (!result || !result.success) {
+            showToast((result && result.message) || 'Falha ao gerar prévia', 'error');
+            return;
+          }
+
+          importCsvPreview = result.data;
+          renderImportPreview(importCsvPreview.previewRows || [], options);
+
+          const summary = `Linhas: ${importCsvPreview.totalRows} | Inválidas: ${importCsvPreview.invalidRows} | Prévia: ${Math.min(importCsvPreview.totalRows, 200)}`;
+          document.getElementById('importPreviewSummary').textContent = summary;
+
+          document.getElementById('importPreviewSection').classList.remove('hidden');
+          document.getElementById('importCommitBtn').disabled = false;
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          console.error('Erro ao gerar prévia:', error);
+          showToast('Erro ao gerar prévia: ' + error.message, 'error');
+        })
+        .statementImportPreview(sessionToken, importCsvText, options);
+    }
+
+    function commitImportCsv() {
+      if (!importCsvText) {
+        showToast('Selecione um CSV primeiro', 'error');
+        return;
+      }
+
+      const options = buildImportOptionsFromUI();
+      if (!options) return;
+      options.overrides = collectImportOverridesFromPreview();
+
+      showLoading();
+      google.script.run
+        .withSuccessHandler(function(result) {
+          hideLoading();
+          if (!result || !result.success) {
+            showToast((result && result.message) || 'Falha ao importar', 'error');
+            return;
+          }
+
+          const d = result.data || {};
+          showToast(`Importado: ${d.created || 0} | Duplicados: ${d.skippedDuplicates || 0} | Inválidos: ${d.skippedInvalid || 0}`, 'success');
+          closeImportStatementModal();
+          loadTransactions();
+          loadDashboard();
+        })
+        .withFailureHandler(function(error) {
+          hideLoading();
+          console.error('Erro ao importar CSV:', error);
+          showToast('Erro ao importar CSV: ' + error.message, 'error');
+        })
+        .statementImportCommit(sessionToken, importCsvText, options);
+    }
+
+    function buildImportOptionsFromUI() {
+      const delimiterRaw = document.getElementById('importDelimiter').value;
+      const delimiter = delimiterRaw === '\\t' ? '\t' : delimiterRaw;
+
+      const mapping = {
+        dateCol: getSelectIndex('importMapDate'),
+        descriptionCol: getSelectIndex('importMapDescription'),
+        amountCol: getSelectIndexOrEmpty('importMapAmount'),
+        debitCol: getSelectIndexOrEmpty('importMapDebit'),
+        creditCol: getSelectIndexOrEmpty('importMapCredit'),
+        typeCol: getSelectIndexOrEmpty('importMapType'),
+        categoryCol: getSelectIndexOrEmpty('importMapCategory'),
+        paymentMethodCol: getSelectIndexOrEmpty('importMapPaymentMethod')
+      };
+
+      if (mapping.dateCol === null || mapping.descriptionCol === null) {
+        showToast('Mapeie pelo menos Data e Descrição', 'error');
+        return null;
+      }
+
+      const debitCategory = document.getElementById('importDefaultDebitCategory').value;
+      const creditCategory = document.getElementById('importDefaultCreditCategory').value;
+      if (!debitCategory || !creditCategory) {
+        showToast('Selecione categorias padrão (Débito e Crédito)', 'error');
+        return null;
+      }
+
+      const defaults = {
+        debitCategory,
+        creditCategory,
+        paymentMethod: document.getElementById('importDefaultPaymentMethod').value
+      };
+
+      return {
+        delimiter: delimiter || undefined,
+        hasHeader: document.getElementById('importHasHeader').checked,
+        mapping,
+        defaults,
+        source: document.getElementById('importSource').value.trim(),
+        account: document.getElementById('importAccount').value.trim()
+      };
+    }
+
+    function fillImportColumnSelect(selectId, headers, selectedIndex, allowEmpty) {
+      const select = document.getElementById(selectId);
+      const opts = [];
+      if (allowEmpty) opts.push('<option value="">(vazio)</option>');
+      headers.forEach((h, idx) => {
+        const label = escapeHtml(String(h || `Coluna ${idx + 1}`));
+        const sel = (selectedIndex === idx) ? 'selected' : '';
+        opts.push(`<option value="${idx}" ${sel}>${label}</option>`);
+      });
+      select.innerHTML = opts.join('');
+
+      // Se sugestão não existe, deixa vazio quando permitido
+      if (allowEmpty && (selectedIndex === undefined || selectedIndex === null || selectedIndex < 0)) {
+        select.value = '';
+      }
+    }
+
+    function populateDefaultCategorySelect(selectId, kind) {
+      const select = document.getElementById(selectId);
+      const active = (currentCategories || []).filter(c => c.isActive && c.kind === kind);
+      const names = active.map(c => c.name);
+
+      const options = ['A revisar', ...names.filter(n => n !== 'A revisar')];
+      select.innerHTML = options.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+      select.value = 'A revisar';
+    }
+
+    function renderImportPreview(rows, options) {
+      const tbody = document.getElementById('importPreviewBody');
+      const debitDefault = options.defaults.debitCategory;
+      const creditDefault = options.defaults.creditCategory;
+      const pmDefault = options.defaults.paymentMethod || 'Outros';
+
+      tbody.innerHTML = (rows || []).map(r => {
+        const enabled = r.valid;
+        const type = r.type === 'debit' ? 'debit' : 'credit';
+        const category = (r.category || (type === 'debit' ? debitDefault : creditDefault) || '').trim();
+        const paymentMethod = (r.paymentMethod || pmDefault || 'Outros').trim();
+
+        const categorySelect = renderCategorySelectHtml(type, category);
+        const paymentSelect = renderPaymentMethodSelectHtml(paymentMethod);
+        const issues = (r.issues || []).join('; ');
+
+        return `
+          <tr data-row-number="${r.rowNumber}">
+            <td class="text-center">
+              <input type="checkbox" class="importRowEnabled" ${enabled ? 'checked' : ''}>
+            </td>
+            <td>${escapeHtml(r.date || '')}</td>
+            <td>${type === 'debit' ? 'Débito' : 'Crédito'}</td>
+            <td>${escapeHtml(r.description || '')}</td>
+            <td class="text-right">${formatCurrency(Number(r.amount || 0))}</td>
+            <td>${categorySelect}</td>
+            <td>${paymentSelect}</td>
+            <td class="text-muted">${escapeHtml(issues)}</td>
+          </tr>
+        `;
+      }).join('') || '<tr><td colspan="8" class="text-center text-muted">Nenhuma linha na prévia</td></tr>';
+    }
+
+    function renderCategorySelectHtml(kind, selectedValue) {
+      const active = (currentCategories || []).filter(c => c.isActive && c.kind === kind);
+      const names = ['A revisar', ...active.map(c => c.name).filter(n => n !== 'A revisar')];
+
+      return `
+        <select class="form-select importRowCategory">
+          ${names.map(n => `<option value="${escapeHtml(n)}" ${n === selectedValue ? 'selected' : ''}>${escapeHtml(n)}</option>`).join('')}
+        </select>
+      `;
+    }
+
+    function renderPaymentMethodSelectHtml(selectedValue) {
+      const opts = ['Outros','Dinheiro','Débito','Crédito à vista','Crédito parcelado','PIX','Boleto','Transferência'];
+      return `
+        <select class="form-select importRowPaymentMethod">
+          ${opts.map(o => `<option value="${escapeHtml(o)}" ${o === selectedValue ? 'selected' : ''}>${escapeHtml(o)}</option>`).join('')}
+        </select>
+      `;
+    }
+
+    function collectImportOverridesFromPreview() {
+      const overrides = {};
+      const rows = document.querySelectorAll('#importPreviewBody tr[data-row-number]');
+      rows.forEach(tr => {
+        const rowNumber = tr.getAttribute('data-row-number');
+        const enabled = tr.querySelector('.importRowEnabled')?.checked !== false;
+        const category = tr.querySelector('.importRowCategory')?.value || '';
+        const paymentMethod = tr.querySelector('.importRowPaymentMethod')?.value || '';
+
+        // Só envia override quando necessário
+        if (!enabled || category || paymentMethod) {
+          overrides[rowNumber] = {
+            enabled,
+            category,
+            paymentMethod
+          };
+        }
+      });
+      return overrides;
+    }
+
+    function getSelectIndex(selectId) {
+      const v = document.getElementById(selectId).value;
+      if (v === '' || v === null || v === undefined) return null;
+      const n = parseInt(v, 10);
+      return isNaN(n) ? null : n;
+    }
+
+    function getSelectIndexOrEmpty(selectId) {
+      const v = document.getElementById(selectId).value;
+      if (v === '' || v === null || v === undefined) return undefined;
+      const n = parseInt(v, 10);
+      return isNaN(n) ? undefined : n;
     }
     
     function saveEditTransaction() {

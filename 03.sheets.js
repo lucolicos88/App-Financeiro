@@ -166,6 +166,44 @@ function addRow(sheetName, rowData) {
 }
 
 /**
+ * Adiciona mÃºltiplas linhas em uma aba (operaÃ§Ã£o em lote)
+ *
+ * @param {string} sheetName - Nome da aba
+ * @param {Array<Array>} rowsData - Array bidimensional com linhas
+ * @returns {boolean} True se sucesso, False caso contrÃ¡rio
+ */
+function addRows(sheetName, rowsData) {
+  try {
+    const sheet = getSheet(sheetName);
+    if (!sheet) return false;
+
+    if (!Array.isArray(rowsData) || rowsData.length === 0) {
+      console.error('[SHEETS] Dados invÃ¡lidos para adicionar linhas');
+      return false;
+    }
+
+    const colCount = Math.max(...rowsData.map(r => (Array.isArray(r) ? r.length : 0)));
+    if (!colCount) {
+      console.error('[SHEETS] Linhas vazias para adicionar');
+      return false;
+    }
+
+    const normalized = rowsData.map(r => {
+      const row = Array.isArray(r) ? r.slice() : [];
+      while (row.length < colCount) row.push('');
+      return row;
+    });
+
+    const lastRow = sheet.getLastRow();
+    sheet.getRange(lastRow + 1, 1, normalized.length, colCount).setValues(normalized);
+    return true;
+  } catch (error) {
+    console.error('[SHEETS] Erro ao adicionar linhas:', error);
+    return false;
+  }
+}
+
+/**
  * Atualiza uma linha existente
  * 
  * @param {string} sheetName - Nome da aba

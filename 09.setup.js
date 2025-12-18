@@ -78,6 +78,39 @@ function setup() {
  * 
  * @param {SpreadsheetApp.Spreadsheet} ss - Planilha ativa
  */
+function ensureSheetHeaders(sheet, desiredHeaders, options) {
+  const opts = options || {};
+  const headerBg = opts.headerBg || '#4285f4';
+  const headerFg = opts.headerFg || '#ffffff';
+
+  const lastCol = Math.max(sheet.getLastColumn(), desiredHeaders.length);
+  const existing = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const first = (existing[0] || '').toString().trim().toLowerCase();
+
+  if (first !== 'id') {
+    sheet.getRange(1, 1, 1, desiredHeaders.length).setValues([desiredHeaders]);
+    sheet.getRange(1, 1, 1, desiredHeaders.length)
+      .setBackground(headerBg)
+      .setFontColor(headerFg)
+      .setFontWeight('bold')
+      .setHorizontalAlignment('center');
+    sheet.setFrozenRows(1);
+    return;
+  }
+
+  const existingTrimmed = existing.map(h => (h || '').toString().trim());
+  const missing = desiredHeaders.filter(h => !existingTrimmed.includes(h));
+  if (missing.length === 0) return;
+
+  const startCol = existingTrimmed.filter(Boolean).length + 1;
+  sheet.getRange(1, startCol, 1, missing.length).setValues([missing]);
+  sheet.getRange(1, startCol, 1, missing.length)
+    .setBackground(headerBg)
+    .setFontColor(headerFg)
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center');
+}
+
 function createTransactionsSheet(ss) {
   const sheetName = 'Transactions';
   let sheet = ss.getSheetByName(sheetName);
