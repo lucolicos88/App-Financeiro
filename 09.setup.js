@@ -40,6 +40,10 @@ function setup() {
     
     // 4. Criar aba Logs
     createLogsSheet(ss);
+
+    // 4.1 Criar abas de Investimentos (novo)
+    createInvestmentsSheet(ss);
+    createInvestmentTransactionsSheet(ss);
     
     // 5. Popular categorias padrão
     populateDefaultCategories(ss);
@@ -536,4 +540,94 @@ function hashPassword(password, salt) {
     const v = (byte < 0) ? 256 + byte : byte;
     return ('0' + v.toString(16)).slice(-2);
   }).join('');
+}
+
+/**
+ * Cria a aba Investments (cadastro de ativos)
+ *
+ * @param {SpreadsheetApp.Spreadsheet} ss - Planilha ativa
+ */
+function createInvestmentsSheet(ss) {
+  const sheetName = 'Investments';
+  let sheet = ss.getSheetByName(sheetName);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    console.log('[SETUP] Aba Investments criada');
+  }
+
+  const headers = [
+    'id',
+    'symbol',
+    'name',
+    'assetType',
+    'broker',
+    'currency',
+    'latestPrice',
+    'lastPriceAt',
+    'isActive',
+    'notes',
+    'createdAt',
+    'updatedAt'
+  ];
+
+  ensureSheetHeaders(sheet, headers, { headerBg: '#7c3aed', headerFg: '#ffffff' });
+
+  try {
+    sheet.setColumnWidth(1, 70);
+    sheet.setColumnWidth(2, 120);
+    sheet.setColumnWidth(3, 220);
+    sheet.setColumnWidth(4, 140);
+    sheet.setColumnWidth(5, 140);
+    sheet.setColumnWidth(6, 90);
+    sheet.setColumnWidth(7, 110);
+    sheet.setColumnWidth(8, 170);
+    sheet.setColumnWidth(9, 90);
+    sheet.setColumnWidth(10, 260);
+    sheet.setColumnWidth(11, 170);
+    sheet.setColumnWidth(12, 170);
+  } catch (_) {}
+}
+
+/**
+ * Cria a aba InvestmentTransactions (lançamentos)
+ *
+ * @param {SpreadsheetApp.Spreadsheet} ss - Planilha ativa
+ */
+function createInvestmentTransactionsSheet(ss) {
+  const sheetName = 'InvestmentTransactions';
+  let sheet = ss.getSheetByName(sheetName);
+
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    console.log('[SETUP] Aba InvestmentTransactions criada');
+  }
+
+  const headers = [
+    'id',
+    'date',
+    'investmentId',
+    'type',
+    'quantity',
+    'price',
+    'amount',
+    'notes',
+    'createdAt',
+    'updatedAt'
+  ];
+
+  ensureSheetHeaders(sheet, headers, { headerBg: '#8b5cf6', headerFg: '#ffffff' });
+
+  try {
+    sheet.setColumnWidth(1, 70);
+    sheet.setColumnWidth(2, 110);
+    sheet.setColumnWidth(3, 110);
+    sheet.setColumnWidth(4, 110);
+    sheet.setColumnWidth(5, 90);
+    sheet.setColumnWidth(6, 90);
+    sheet.setColumnWidth(7, 110);
+    sheet.setColumnWidth(8, 260);
+    sheet.setColumnWidth(9, 170);
+    sheet.setColumnWidth(10, 170);
+  } catch (_) {}
 }

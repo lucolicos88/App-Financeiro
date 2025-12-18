@@ -1523,6 +1523,7 @@
           <button class="nav-tab" data-tab="categories">🏷️ Categorias</button>
           <button class="nav-tab" data-tab="reports">📈 Relatórios</button>
           <button class="nav-tab" data-tab="goals">🎯 Metas</button>
+          <button class="nav-tab" data-tab="investments">💹 Investimentos</button>
           <button class="nav-tab" data-tab="settings">⚙️ Configurações</button>
         </nav>
         
@@ -2066,6 +2067,160 @@
             <p class="text-muted">Carregando metas...</p>
           </div>
 
+        </div>
+
+        <!-- TAB: INVESTIMENTOS -->
+        <div id="investmentsTab" class="tab-content">
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">💹 Carteira de Investimentos</h2>
+              <button class="btn btn-secondary btn-sm" onclick="loadInvestments()">🔄 Atualizar</button>
+            </div>
+            <div class="stats-grid">
+              <div class="stat-item">
+                <div class="stat-value" id="invTotalValue">R$ 0,00</div>
+                <div class="stat-label">Valor Atual</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" id="invCostBasis">R$ 0,00</div>
+                <div class="stat-label">Custo (Aberto)</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" id="invTotalPnL">R$ 0,00</div>
+                <div class="stat-label">Resultado Total</div>
+              </div>
+              <div class="stat-item">
+                <div class="stat-value" id="invDividends">R$ 0,00</div>
+                <div class="stat-label">Dividendos</div>
+              </div>
+            </div>
+            <div class="text-muted" style="margin-top: 12px;">
+              Preços atuais são informados manualmente (por enquanto).
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">📌 Ativos</h2>
+            </div>
+
+            <form id="investmentForm" class="form-row" style="align-items:flex-end;">
+              <input type="hidden" id="invId" value="">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Ticker</label>
+                <input id="invSymbol" class="form-input" placeholder="Ex: PETR4, IVVB11, BTC">
+              </div>
+              <div class="form-group" style="flex: 2;">
+                <label class="form-label">Nome</label>
+                <input id="invName" class="form-input" placeholder="Nome do ativo">
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Tipo</label>
+                <select id="invAssetType" class="form-select">
+                  <option value="Ação">Ação</option>
+                  <option value="FII">FII</option>
+                  <option value="ETF">ETF</option>
+                  <option value="Cripto">Cripto</option>
+                  <option value="Renda fixa">Renda fixa</option>
+                  <option value="Outro">Outro</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Preço atual</label>
+                <input id="invLatestPrice" class="form-input" type="number" step="0.00000001" placeholder="0,00">
+              </div>
+              <div class="form-group" style="display:flex; gap:8px;">
+                <button type="submit" class="btn btn-primary">💾 Salvar</button>
+                <button type="button" class="btn btn-secondary" onclick="resetInvestmentForm()">Limpar</button>
+              </div>
+            </form>
+
+            <div class="table-container" style="margin-top: 12px;">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Ativo</th>
+                    <th>Tipo</th>
+                    <th class="text-right">Qtd</th>
+                    <th class="text-right">Preço médio</th>
+                    <th class="text-right">Preço atual</th>
+                    <th class="text-right">Valor atual</th>
+                    <th class="text-right">P/L</th>
+                    <th class="text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="investmentsTableBody">
+                  <tr><td colspan="8" class="text-center text-muted">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">🧾 Lançamentos</h2>
+            </div>
+            <form id="investmentTxForm" class="form-row" style="align-items:flex-end;">
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Data</label>
+                <input id="invTxDate" class="form-input" type="date" required>
+              </div>
+              <div class="form-group" style="flex: 2;">
+                <label class="form-label">Ativo</label>
+                <select id="invTxInvestmentId" class="form-select" required>
+                  <option value="">Selecione...</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Tipo</label>
+                <select id="invTxType" class="form-select">
+                  <option value="buy">Compra</option>
+                  <option value="sell">Venda</option>
+                  <option value="dividend">Dividendo</option>
+                  <option value="fee">Taxa</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Qtd</label>
+                <input id="invTxQuantity" class="form-input" type="number" step="0.00000001" placeholder="0">
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Preço</label>
+                <input id="invTxPrice" class="form-input" type="number" step="0.00000001" placeholder="0,00">
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label class="form-label">Valor</label>
+                <input id="invTxAmount" class="form-input" type="number" step="0.01" placeholder="0,00">
+              </div>
+              <div class="form-group" style="flex: 2;">
+                <label class="form-label">Obs.</label>
+                <input id="invTxNotes" class="form-input" placeholder="Opcional">
+              </div>
+              <div class="form-group">
+                <button type="submit" class="btn btn-primary">➕ Adicionar</button>
+              </div>
+            </form>
+
+            <div class="table-container" style="margin-top: 12px;">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Ativo</th>
+                    <th>Tipo</th>
+                    <th class="text-right">Qtd</th>
+                    <th class="text-right">Preço</th>
+                    <th class="text-right">Valor</th>
+                    <th>Obs.</th>
+                    <th class="text-center">Ações</th>
+                  </tr>
+                </thead>
+                <tbody id="investmentTxTableBody">
+                  <tr><td colspan="8" class="text-center text-muted">Carregando...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <!-- TAB: CONFIGURAÇÕES -->
@@ -2623,6 +2778,8 @@
         loadCategories();
       } else if (tabName === 'goals') {
         loadGoals();
+      } else if (tabName === 'investments') {
+        loadInvestments();
       } else if (tabName === 'settings') {
         loadSettings();
       }
@@ -4536,6 +4693,9 @@ function formatFileSize(bytes) {
       document.getElementById('changePasswordForm').addEventListener('submit', handleChangePassword);
       document.getElementById('initialBalanceForm').addEventListener('submit', handleInitialBalance);
       document.getElementById('folderForm').addEventListener('submit', handleFolderConfig);
+      document.getElementById('investmentForm')?.addEventListener('submit', handleSaveInvestment);
+      document.getElementById('investmentTxForm')?.addEventListener('submit', handleAddInvestmentTx);
+      document.getElementById('invTxType')?.addEventListener('change', syncInvestmentTxFields);
 
     // ADICIONAR ESTE BLOCO AQUI:
   const paymentMethodSelect = document.getElementById('txPaymentMethod');
@@ -4594,11 +4754,15 @@ if (paymentMethodSelect) {
       
       const today = new Date().toISOString().split('T')[0];
       document.getElementById('txDate').value = today;
+      const invTxDate = document.getElementById('invTxDate');
+      if (invTxDate) invTxDate.value = today;
       document.getElementById('reportEndDate').value = today;
       
       const firstDay = new Date();
       firstDay.setDate(1);
       document.getElementById('reportStartDate').value = firstDay.toISOString().split('T')[0];
+
+      try { syncInvestmentTxFields(); } catch (_) {}
       
       const storedToken = sessionStorage.getItem('token');
       if (storedToken) {
@@ -5067,6 +5231,313 @@ function deleteGoalUI(goalId) {
         })
         .deleteGoal(sessionToken, goalId);
     }
+  });
+}
+
+/* ===== INVESTIMENTOS ===== */
+
+let currentInvestments = [];
+let currentPortfolio = { positions: [], totals: {} };
+let currentInvestmentTransactions = [];
+
+function formatNumber(value, decimals = 2) {
+  const n = Number(value);
+  if (!isFinite(n)) return '-';
+  return n.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+}
+
+function formatSignedCurrency(value) {
+  const n = Number(value);
+  if (!isFinite(n)) return 'R$ 0,00';
+  const prefix = n >= 0 ? '' : '-';
+  return prefix + formatCurrency(Math.abs(n));
+}
+
+function loadInvestments() {
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result && result.success && result.data) {
+        currentInvestments = result.data.investments || [];
+        currentPortfolio = result.data.portfolio || { positions: [], totals: {} };
+        currentInvestmentTransactions = result.data.recentTransactions || [];
+
+        renderInvestmentsSummary(currentPortfolio.totals || {});
+        renderInvestmentsTable(currentPortfolio.positions || []);
+        renderInvestmentTxSelect(currentInvestments);
+        renderInvestmentTxTable(currentInvestmentTransactions);
+      } else {
+        showToast((result && result.message) || 'Erro ao carregar investimentos', 'error');
+      }
+    })
+    .withFailureHandler(function(error) {
+      hideLoading();
+      console.error('Erro ao carregar investimentos:', error);
+      showToast('Erro ao carregar investimentos: ' + error.message, 'error');
+    })
+    .getPortfolioBundle(sessionToken);
+}
+
+function renderInvestmentsSummary(totals) {
+  document.getElementById('invTotalValue').textContent = formatCurrency(totals.currentValue || 0);
+  document.getElementById('invCostBasis').textContent = formatCurrency(totals.costBasis || 0);
+  const pnlEl = document.getElementById('invTotalPnL');
+  pnlEl.textContent = formatSignedCurrency(totals.totalPnL || 0);
+  pnlEl.classList.toggle('text-success', (totals.totalPnL || 0) >= 0);
+  pnlEl.classList.toggle('text-danger', (totals.totalPnL || 0) < 0);
+  document.getElementById('invDividends').textContent = formatCurrency(totals.dividends || 0);
+}
+
+function renderInvestmentsTable(positions) {
+  const tbody = document.getElementById('investmentsTableBody');
+  if (!positions || positions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Nenhum ativo cadastrado</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = positions.map(p => {
+    const pnl = Number(p.totalPnL || 0);
+    const pnlClass = pnl >= 0 ? 'text-success' : 'text-danger';
+    const assetLabel = escapeHtml((p.symbol ? p.symbol + ' - ' : '') + (p.name || ''));
+    const typeLabel = escapeHtml(p.assetType || '');
+    const priceInputId = `invPrice_${p.investmentId}`;
+    const currentPrice = isFinite(Number(p.latestPrice)) ? Number(p.latestPrice) : 0;
+
+    return `
+      <tr>
+        <td>${assetLabel}</td>
+        <td>${typeLabel}</td>
+        <td class="text-right">${formatNumber(p.quantity || 0, 8)}</td>
+        <td class="text-right">${formatCurrency(p.avgCost || 0)}</td>
+        <td class="text-right">
+          <input id="${priceInputId}" class="form-input" style="max-width: 120px; padding: 6px 10px;" type="number" step="0.00000001" value="${currentPrice}">
+        </td>
+        <td class="text-right">${formatCurrency(p.currentValue || 0)}</td>
+        <td class="text-right ${pnlClass}">${formatSignedCurrency(pnl)}</td>
+        <td class="text-center">
+          <div class="table-actions">
+            <button class="btn btn-secondary btn-sm" onclick="saveInvestmentPrice(${p.investmentId})">Salvar preço</button>
+            <button class="btn btn-secondary btn-sm" onclick="editInvestment(${p.investmentId})">Editar</button>
+            <button class="btn btn-danger btn-sm" onclick="removeInvestment(${p.investmentId})">Remover</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function renderInvestmentTxSelect(investments) {
+  const select = document.getElementById('invTxInvestmentId');
+  if (!select) return;
+  const options = (investments || []).map(a => {
+    const label = (a.symbol ? `${a.symbol} - ` : '') + (a.name || '');
+    return `<option value="${a.id}">${escapeHtml(label)}</option>`;
+  }).join('');
+  select.innerHTML = `<option value="">Selecione...</option>${options}`;
+}
+
+function renderInvestmentTxTable(rows) {
+  const tbody = document.getElementById('investmentTxTableBody');
+  if (!tbody) return;
+
+  if (!rows || rows.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Nenhum lançamento</td></tr>';
+    return;
+  }
+
+  const invById = {};
+  currentInvestments.forEach(a => { invById[String(a.id)] = a; });
+
+  const typeLabels = { buy: 'Compra', sell: 'Venda', dividend: 'Dividendo', fee: 'Taxa' };
+
+  tbody.innerHTML = rows.map(tx => {
+    const inv = invById[String(tx.investmentId)] || {};
+    const invLabel = escapeHtml((inv.symbol ? inv.symbol + ' - ' : '') + (inv.name || String(tx.investmentId)));
+    const type = escapeHtml(typeLabels[String(tx.type)] || String(tx.type));
+    const qty = (tx.quantity === '' ? '-' : formatNumber(tx.quantity, 8));
+    const price = (tx.price === '' ? '-' : formatCurrency(tx.price));
+    const amount = (tx.amount === '' ? '-' : formatCurrency(tx.amount));
+    const notes = escapeHtml(tx.notes || '');
+    return `
+      <tr>
+        <td>${formatDate(tx.date)}</td>
+        <td>${invLabel}</td>
+        <td>${type}</td>
+        <td class="text-right">${qty}</td>
+        <td class="text-right">${price}</td>
+        <td class="text-right">${amount}</td>
+        <td>${notes}</td>
+        <td class="text-center">
+          <button class="btn btn-danger btn-sm" onclick="deleteInvestmentTx(${tx.id})">🗑️</button>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function resetInvestmentForm() {
+  document.getElementById('invId').value = '';
+  document.getElementById('invSymbol').value = '';
+  document.getElementById('invName').value = '';
+  document.getElementById('invAssetType').value = 'Ação';
+  document.getElementById('invLatestPrice').value = '';
+}
+
+function editInvestment(id) {
+  const inv = (currentInvestments || []).find(a => String(a.id) === String(id));
+  if (!inv) return;
+  document.getElementById('invId').value = inv.id;
+  document.getElementById('invSymbol').value = inv.symbol || '';
+  document.getElementById('invName').value = inv.name || '';
+  document.getElementById('invAssetType').value = inv.assetType || 'Ação';
+  document.getElementById('invLatestPrice').value = isFinite(Number(inv.latestPrice)) ? Number(inv.latestPrice) : '';
+  showToast('Edite e clique em Salvar', 'info');
+}
+
+function removeInvestment(id) {
+  showConfirm('Remover este ativo? (os lançamentos permanecem)', function(confirmed) {
+    if (!confirmed) return;
+    showLoading();
+    google.script.run
+      .withSuccessHandler(function(result) {
+        hideLoading();
+        if (result && result.success) {
+          showToast('Ativo removido', 'success');
+          resetInvestmentForm();
+          loadInvestments();
+        } else {
+          showToast((result && result.message) || 'Erro ao remover ativo', 'error');
+        }
+      })
+      .withFailureHandler(function(error) {
+        hideLoading();
+        showToast('Erro ao remover ativo: ' + error.message, 'error');
+      })
+      .deleteInvestment(sessionToken, id);
+  });
+}
+
+function saveInvestmentPrice(id) {
+  const input = document.getElementById(`invPrice_${id}`);
+  const price = input ? input.value : '';
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result && result.success) {
+        showToast('Preço atualizado', 'success');
+        loadInvestments();
+      } else {
+        showToast((result && result.message) || 'Erro ao atualizar preço', 'error');
+      }
+    })
+    .withFailureHandler(function(error) {
+      hideLoading();
+      showToast('Erro ao atualizar preço: ' + error.message, 'error');
+    })
+    .updateInvestmentPrice(sessionToken, id, price);
+}
+
+function syncInvestmentTxFields() {
+  const type = document.getElementById('invTxType').value;
+  const qty = document.getElementById('invTxQuantity');
+  const price = document.getElementById('invTxPrice');
+  const amount = document.getElementById('invTxAmount');
+
+  const isBuySell = type === 'buy' || type === 'sell';
+  qty.disabled = !isBuySell;
+  price.disabled = !isBuySell;
+  amount.disabled = isBuySell;
+
+  if (isBuySell) {
+    amount.value = '';
+  } else {
+    qty.value = '';
+    price.value = '';
+  }
+}
+
+function handleSaveInvestment(e) {
+  e.preventDefault();
+  const payload = {
+    id: document.getElementById('invId').value || '',
+    symbol: document.getElementById('invSymbol').value || '',
+    name: document.getElementById('invName').value || '',
+    assetType: document.getElementById('invAssetType').value || 'Ação',
+    latestPrice: document.getElementById('invLatestPrice').value || ''
+  };
+
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result && result.success) {
+        showToast('Ativo salvo', 'success');
+        resetInvestmentForm();
+        loadInvestments();
+      } else {
+        showToast((result && result.message) || 'Erro ao salvar ativo', 'error');
+      }
+    })
+    .withFailureHandler(function(error) {
+      hideLoading();
+      showToast('Erro ao salvar ativo: ' + error.message, 'error');
+    })
+    .upsertInvestment(sessionToken, payload);
+}
+
+function handleAddInvestmentTx(e) {
+  e.preventDefault();
+  const payload = {
+    date: document.getElementById('invTxDate').value,
+    investmentId: document.getElementById('invTxInvestmentId').value,
+    type: document.getElementById('invTxType').value,
+    quantity: document.getElementById('invTxQuantity').value,
+    price: document.getElementById('invTxPrice').value,
+    amount: document.getElementById('invTxAmount').value,
+    notes: document.getElementById('invTxNotes').value
+  };
+
+  showLoading();
+  google.script.run
+    .withSuccessHandler(function(result) {
+      hideLoading();
+      if (result && result.success) {
+        showToast('Lançamento adicionado', 'success');
+        document.getElementById('invTxNotes').value = '';
+        syncInvestmentTxFields();
+        loadInvestments();
+      } else {
+        showToast((result && result.message) || 'Erro ao adicionar lançamento', 'error');
+      }
+    })
+    .withFailureHandler(function(error) {
+      hideLoading();
+      showToast('Erro ao adicionar lançamento: ' + error.message, 'error');
+    })
+    .addInvestmentTransaction(sessionToken, payload);
+}
+
+function deleteInvestmentTx(id) {
+  showConfirm('Excluir este lançamento?', function(confirmed) {
+    if (!confirmed) return;
+    showLoading();
+    google.script.run
+      .withSuccessHandler(function(result) {
+        hideLoading();
+        if (result && result.success) {
+          showToast('Lançamento excluído', 'success');
+          loadInvestments();
+        } else {
+          showToast((result && result.message) || 'Erro ao excluir lançamento', 'error');
+        }
+      })
+      .withFailureHandler(function(error) {
+        hideLoading();
+        showToast('Erro ao excluir lançamento: ' + error.message, 'error');
+      })
+      .deleteInvestmentTransaction(sessionToken, id);
   });
 }
 
