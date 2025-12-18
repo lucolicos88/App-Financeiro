@@ -1,6 +1,7 @@
 {
   "scriptId": "19sts7op43dZh1fE5KZ-TjdE97M_r_jHKuuOyWWvxwPG8HrWOSUPwPqtb",
   "rootDir": "",
+  "projectId": "circular-jet-323203",
   "scriptExtensions": [
     ".js",
     ".gs"
@@ -11,6 +12,5 @@
   "jsonExtensions": [
     ".json"
   ],
-  "filePushOrder": [],
-  "skipSubdirectories": false
+  "filePushOrder": []
 }
