@@ -1815,6 +1815,34 @@
                 </select>
               </div>
             </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label for="filterSearch" class="form-label">Buscar (descrição)</label>
+                <input type="text" id="filterSearch" class="form-input" placeholder="Ex: supermercado, aluguel...">
+              </div>
+              <div class="form-group">
+                <label for="filterMinAmount" class="form-label">Valor mínimo</label>
+                <input type="number" id="filterMinAmount" class="form-input" step="0.01" min="0" placeholder="0,00">
+              </div>
+              <div class="form-group">
+                <label for="filterMaxAmount" class="form-label">Valor máximo</label>
+                <input type="number" id="filterMaxAmount" class="form-input" step="0.01" min="0" placeholder="0,00">
+              </div>
+              <div class="form-group">
+                <label for="filterPaymentMethod" class="form-label">Pagamento</label>
+                <select id="filterPaymentMethod" class="form-select">
+                  <option value="">Todos</option>
+                  <option value="Dinheiro">Dinheiro</option>
+                  <option value="Débito">Débito</option>
+                  <option value="Crédito à vista">Crédito à vista</option>
+                  <option value="Crédito parcelado">Crédito parcelado</option>
+                  <option value="PIX">PIX</option>
+                  <option value="Boleto">Boleto</option>
+                  <option value="Transferência">Transferência</option>
+                  <option value="Outros">Outros</option>
+                </select>
+              </div>
+            </div>
             <button class="btn btn-primary" onclick="applyFilters()">🔍 Aplicar Filtros</button>
           </div>
           
@@ -3949,11 +3977,19 @@
       const endDate = document.getElementById('filterEndDate').value;
       const type = document.getElementById('filterType').value;
       const category = document.getElementById('filterCategory').value;
+      const search = document.getElementById('filterSearch')?.value || '';
+      const minAmount = document.getElementById('filterMinAmount')?.value || '';
+      const maxAmount = document.getElementById('filterMaxAmount')?.value || '';
+      const paymentMethod = document.getElementById('filterPaymentMethod')?.value || '';
       
       if (startDate) filters.startDate = startDate;
       if (endDate) filters.endDate = endDate;
       if (type) filters.type = type;
       if (category) filters.category = category;
+      if (search && search.trim()) filters.search = search.trim();
+      if (minAmount !== '') filters.minAmount = minAmount;
+      if (maxAmount !== '') filters.maxAmount = maxAmount;
+      if (paymentMethod) filters.paymentMethod = paymentMethod;
       
       console.log('Applying filters:', filters);
       currentTransactionsPage = 1;
@@ -3965,6 +4001,10 @@
       document.getElementById('filterEndDate').value = '';
       document.getElementById('filterType').value = '';
       document.getElementById('filterCategory').value = '';
+      if (document.getElementById('filterSearch')) document.getElementById('filterSearch').value = '';
+      if (document.getElementById('filterMinAmount')) document.getElementById('filterMinAmount').value = '';
+      if (document.getElementById('filterMaxAmount')) document.getElementById('filterMaxAmount').value = '';
+      if (document.getElementById('filterPaymentMethod')) document.getElementById('filterPaymentMethod').value = '';
       currentTransactionsPage = 1;
       loadTransactions();
     }

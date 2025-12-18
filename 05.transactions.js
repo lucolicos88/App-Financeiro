@@ -118,6 +118,10 @@ const rowData = [
  * @param {string} filters.endDate - Data final (formato YYYY-MM-DD)
  * @param {string} filters.type - Tipo: 'debit' ou 'credit'
  * @param {string} filters.category - Nome da categoria
+ * @param {string} filters.search - Texto para buscar na descrição
+ * @param {number|string} filters.minAmount - Valor mínimo
+ * @param {number|string} filters.maxAmount - Valor máximo
+ * @param {string} filters.paymentMethod - Forma de pagamento
  * @returns {Object} Resultado com dados paginados
  */
 function queryTransactions(token, filters) {
@@ -196,6 +200,28 @@ function queryTransactions(token, filters) {
 
       if (filters.category) {
         transactions = transactions.filter(t => t.category === filters.category);
+      }
+
+      if (filters.paymentMethod) {
+        transactions = transactions.filter(t => (t.paymentMethod || 'Outros') === filters.paymentMethod);
+      }
+
+      if (filters.search && String(filters.search).trim()) {
+        const needle = String(filters.search).trim().toLowerCase();
+        transactions = transactions.filter(t => String(t.description || '').toLowerCase().includes(needle));
+      }
+
+      const minAmount = (filters.minAmount !== undefined && filters.minAmount !== null && filters.minAmount !== '')
+        ? parseFloat(filters.minAmount)
+        : null;
+      const maxAmount = (filters.maxAmount !== undefined && filters.maxAmount !== null && filters.maxAmount !== '')
+        ? parseFloat(filters.maxAmount)
+        : null;
+      if (minAmount !== null && !isNaN(minAmount)) {
+        transactions = transactions.filter(t => (parseFloat(t.amount) || 0) >= minAmount);
+      }
+      if (maxAmount !== null && !isNaN(maxAmount)) {
+        transactions = transactions.filter(t => (parseFloat(t.amount) || 0) <= maxAmount);
       }
     }
 
@@ -329,6 +355,32 @@ function listTransactions(token, filters) {
       if (filters.category) {
         transactions = transactions.filter(t => t.category === filters.category);
         console.log('[TRANSACTIONS] Filtro category:', filters.category, '- Restantes:', transactions.length);
+      }
+
+      if (filters.paymentMethod) {
+        transactions = transactions.filter(t => (t.paymentMethod || 'Outros') === filters.paymentMethod);
+        console.log('[TRANSACTIONS] Filtro paymentMethod:', filters.paymentMethod, '- Restantes:', transactions.length);
+      }
+
+      if (filters.search && String(filters.search).trim()) {
+        const needle = String(filters.search).trim().toLowerCase();
+        transactions = transactions.filter(t => String(t.description || '').toLowerCase().includes(needle));
+        console.log('[TRANSACTIONS] Filtro search:', needle, '- Restantes:', transactions.length);
+      }
+
+      const minAmount = (filters.minAmount !== undefined && filters.minAmount !== null && filters.minAmount !== '')
+        ? parseFloat(filters.minAmount)
+        : null;
+      const maxAmount = (filters.maxAmount !== undefined && filters.maxAmount !== null && filters.maxAmount !== '')
+        ? parseFloat(filters.maxAmount)
+        : null;
+      if (minAmount !== null && !isNaN(minAmount)) {
+        transactions = transactions.filter(t => (parseFloat(t.amount) || 0) >= minAmount);
+        console.log('[TRANSACTIONS] Filtro minAmount:', minAmount, '- Restantes:', transactions.length);
+      }
+      if (maxAmount !== null && !isNaN(maxAmount)) {
+        transactions = transactions.filter(t => (parseFloat(t.amount) || 0) <= maxAmount);
+        console.log('[TRANSACTIONS] Filtro maxAmount:', maxAmount, '- Restantes:', transactions.length);
       }
       
       console.log('[TRANSACTIONS] Filtros aplicados. De', originalCount, 'para', transactions.length);
