@@ -30,8 +30,8 @@
   }
     /* ===== SUPORTE A EMOJIS ===== */
   body, h1, h2, h3, button, .kpi-icon, .nav-tab, .app-title {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 
-                 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+    font-family: var(--ui-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
+                 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif);
   }
     /* ===== RESET ===== */
     * {
@@ -61,6 +61,10 @@
       --shadow-lg: 0 10px 25px rgba(0,0,0,0.15);
       --radius: 12px;
       --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+      --ui-font-size: 14px;
+      --ui-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
+                        'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
     }
 
     /* Dark Mode Variables */
@@ -88,8 +92,8 @@
     }
     
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu','Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
-      font-size: 14px;
+      font-family: var(--ui-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu','Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif);
+      font-size: var(--ui-font-size, 14px);
       line-height: 1.6;
       color: var(--dark);
       background: linear-gradient(135deg, var(--bg-gradient-1) 0%, var(--bg-gradient-2) 100%);
@@ -124,6 +128,13 @@
       from {
         opacity: 0;
         transform: translateY(30px);
+
+        // Preferências de interface (tema, fonte, densidade)
+        try {
+          applyUiPreferences(settings);
+        } catch (e) {
+          console.warn('Falha ao aplicar preferências de UI:', e);
+        }
       }
       to {
         opacity: 1;
@@ -855,6 +866,11 @@
     .table td {
       padding: 16px;
       text-align: left;
+    }
+
+    body[data-density="compact"] .table th,
+    body[data-density="compact"] .table td {
+      padding: 10px 12px;
     }
     
     .table th {
@@ -2030,6 +2046,57 @@
             </form>
           </div>
 
+          <!-- Aparência -->
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">🎨 Aparência</h2>
+            </div>
+            <form id="appearanceForm">
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Tema</label>
+                  <select id="uiTheme" class="form-select">
+                    <option value="light">Claro</option>
+                    <option value="dark">Escuro</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Tamanho da fonte</label>
+                  <select id="uiFontSize" class="form-select">
+                    <option value="13">Pequena</option>
+                    <option value="14">Normal</option>
+                    <option value="16">Grande</option>
+                    <option value="18">Muito grande</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Fonte</label>
+                  <select id="uiFontFamily" class="form-select">
+                    <option value="system">Sistema</option>
+                    <option value="serif">Serif</option>
+                    <option value="monospace">Monospace</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Densidade</label>
+                  <select id="uiDensity" class="form-select">
+                    <option value="comfortable">Confortável</option>
+                    <option value="compact">Compacta</option>
+                  </select>
+                  <small class="text-muted">Compacta deixa as tabelas mais “enxutas”.</small>
+                </div>
+                <div class="form-group" style="display:flex; align-items:flex-end; justify-content:flex-end;">
+                  <button type="submit" class="btn btn-primary">💾 Salvar Aparência</button>
+                </div>
+              </div>
+
+              <small class="text-muted">Mais opções de interface serão adicionadas em futuras atualizações (temas, tabelas, filtros, atalhos).</small>
+            </form>
+          </div>
+
           <!-- Relatórios por Email -->
           <div class="card">
             <div class="card-header">
@@ -2640,11 +2707,22 @@
 
       // Salvar preferência no localStorage
       localStorage.setItem('darkMode', isDarkMode ? 'enabled' : 'disabled');
+      localStorage.setItem('uiTheme', isDarkMode ? 'dark' : 'light');
+
+      const themeSelect = document.getElementById('uiTheme');
+      if (themeSelect) themeSelect.value = isDarkMode ? 'dark' : 'light';
 
       // Atualizar ícone do botão
       const icon = document.querySelector('.dark-mode-icon');
       if (icon) {
         icon.textContent = '';  // Limpa o conteúdo para permitir que o CSS ::before funcione
+      }
+
+      // Persistir no backend se estiver logado (sem travar UI)
+      if (sessionToken) {
+        try {
+          google.script.run.updateUserSettings(sessionToken, { darkMode: isDarkMode });
+        } catch (_) {}
       }
 
       // Toast de feedback
@@ -2662,6 +2740,61 @@
         const icon = document.querySelector('.dark-mode-icon');
         if (icon) icon.textContent = '';
       }
+    }
+
+    function applyUiPreferences(settings) {
+      if (!settings) return;
+
+      const wantDark = Boolean(settings.darkMode) || String(settings.uiTheme || '').toLowerCase() === 'dark';
+      document.body.classList.toggle('dark-mode', wantDark);
+      localStorage.setItem('darkMode', wantDark ? 'enabled' : 'disabled');
+      localStorage.setItem('uiTheme', wantDark ? 'dark' : 'light');
+
+      const size = parseInt(String(settings.uiFontSize || '').trim(), 10);
+      if (!isNaN(size) && size >= 12 && size <= 22) {
+        document.documentElement.style.setProperty('--ui-font-size', `${size}px`);
+        localStorage.setItem('uiFontSize', String(size));
+      }
+
+      const family = String(settings.uiFontFamily || 'system').trim().toLowerCase();
+      let cssFamily = '';
+      if (family === 'serif') {
+        cssFamily = 'ui-serif, Georgia, Cambria, \"Times New Roman\", Times, serif';
+      } else if (family === 'monospace') {
+        cssFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Liberation Mono\", \"Courier New\", monospace';
+      } else {
+        cssFamily = '';
+      }
+
+      if (cssFamily) {
+        document.documentElement.style.setProperty('--ui-font-family', cssFamily);
+      } else {
+        document.documentElement.style.removeProperty('--ui-font-family');
+      }
+      localStorage.setItem('uiFontFamily', family);
+
+      const density = (String(settings.uiDensity || 'comfortable').trim().toLowerCase() === 'compact') ? 'compact' : 'comfortable';
+      document.body.dataset.density = density;
+      localStorage.setItem('uiDensity', density);
+
+      // Sincronizar selects (se existirem)
+      const themeSelect = document.getElementById('uiTheme');
+      if (themeSelect) themeSelect.value = wantDark ? 'dark' : 'light';
+      const sizeSelect = document.getElementById('uiFontSize');
+      if (sizeSelect && !isNaN(size)) sizeSelect.value = String(size);
+      const familySelect = document.getElementById('uiFontFamily');
+      if (familySelect) familySelect.value = family;
+      const densitySelect = document.getElementById('uiDensity');
+      if (densitySelect) densitySelect.value = density;
+    }
+
+    function initUiPreferences() {
+      applyUiPreferences({
+        darkMode: localStorage.getItem('darkMode') === 'enabled',
+        uiFontSize: localStorage.getItem('uiFontSize') || '14',
+        uiFontFamily: localStorage.getItem('uiFontFamily') || 'system',
+        uiDensity: localStorage.getItem('uiDensity') || 'comfortable'
+      });
     }
 
     function escapeHtml(text) {
@@ -2683,6 +2816,9 @@
         google.script.run
           .withSuccessHandler(function(result) {
             if (result && result.success && result.data) {
+              if (result.data.settings) {
+                applyUiPreferences(result.data.settings);
+              }
               if (result.data.categories) {
                 currentCategories = result.data.categories || [];
                 renderCategories(currentCategories);
@@ -4329,6 +4465,7 @@ function formatFileSize(bytes) {
     document.addEventListener('DOMContentLoaded', function() {
       // Inicializar dark mode
       initDarkMode();
+      initUiPreferences();
 
       document.getElementById('loginForm').addEventListener('submit', handleLogin);
       document.getElementById('logoutBtn').addEventListener('click', handleLogout);
@@ -4928,6 +5065,36 @@ document.getElementById('emailReportsForm')?.addEventListener('submit', function
       showError('Erro ao salvar configurações: ' + error.message);
     })
     .updateUserSettings(sessionToken, settings);
+});
+
+// Form de aparência
+document.getElementById('appearanceForm')?.addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const theme = document.getElementById('uiTheme').value;
+  const uiSettings = {
+    darkMode: theme === 'dark',
+    uiFontSize: String(document.getElementById('uiFontSize').value || '14'),
+    uiFontFamily: String(document.getElementById('uiFontFamily').value || 'system'),
+    uiDensity: String(document.getElementById('uiDensity').value || 'comfortable')
+  };
+
+  // Aplica imediatamente no frontend
+  applyUiPreferences(uiSettings);
+
+  // Persiste no backend
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result && result.success) {
+        showSuccess('Aparência salva com sucesso!');
+      } else {
+        showError((result && result.message) || 'Erro ao salvar aparência');
+      }
+    })
+    .withFailureHandler(function(error) {
+      showError('Erro ao salvar aparência: ' + error.message);
+    })
+    .updateUserSettings(sessionToken, uiSettings);
 });
 
 function sendManualEmailReport() {

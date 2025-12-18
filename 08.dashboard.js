@@ -1205,13 +1205,15 @@ function getInitialBundle(token) {
 
     const dashboard = getDashboardBundle(token);
     const categories = listCategories(token, {});
+    const settings = getUserSettings(token);
 
     return {
       success: true,
       message: 'Dados iniciais carregados',
       data: {
         dashboard: (dashboard && dashboard.success) ? dashboard.data : null,
-        categories: (categories && categories.success) ? categories.data : []
+        categories: (categories && categories.success) ? categories.data : [],
+        settings: (settings && settings.success) ? settings.data : null
       }
     };
   } catch (error) {

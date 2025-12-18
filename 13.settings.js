@@ -31,7 +31,7 @@ function getUserSettings(token) {
       };
     }
 
-    const sheet = getSheet(SHEET_NAMES.CONFIG);
+    const sheet = getSheet('Settings') || getSheet(SHEET_NAMES.CONFIG);
     if (!sheet) {
       return {
         success: false,
@@ -60,6 +60,9 @@ function getUserSettings(token) {
       notificationsEnabled: true,
       remindersDaysBeforeDue: 3,
       darkMode: false,
+      uiFontFamily: 'system',     // system, serif, monospace
+      uiFontSize: '14',           // px
+      uiDensity: 'comfortable',   // comfortable, compact
       currency: 'BRL',
       dateFormat: 'DD/MM/YYYY',
       monthlyIncome: 0,
@@ -120,7 +123,7 @@ function updateUserSettings(token, newSettings) {
       };
     }
 
-    const sheet = getSheet(SHEET_NAMES.CONFIG);
+    const sheet = getSheet('Settings') || getSheet(SHEET_NAMES.CONFIG);
     if (!sheet) {
       return {
         success: false,
@@ -139,7 +142,7 @@ function updateUserSettings(token, newSettings) {
 
     // Limpar planilha e reescrever
     sheet.clear();
-    sheet.appendRow(['Chave', 'Valor']);
+    sheet.appendRow(['key', 'value']);
 
     // Escrever configurações
     const entries = Object.entries(updatedSettings)
