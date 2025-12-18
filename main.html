@@ -2115,6 +2115,10 @@
                 <input id="invName" class="form-input" placeholder="Nome do ativo">
               </div>
               <div class="form-group" style="flex: 1;">
+                <label class="form-label">Corretora</label>
+                <input id="invBroker" class="form-input" placeholder="Ex: XP, Rico, Inter">
+              </div>
+              <div class="form-group" style="flex: 1;">
                 <label class="form-label">Tipo</label>
                 <select id="invAssetType" class="form-select">
                   <option value="Ação">Ação</option>
@@ -2123,6 +2127,14 @@
                   <option value="Cripto">Cripto</option>
                   <option value="Renda fixa">Renda fixa</option>
                   <option value="Outro">Outro</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex: 0.7;">
+                <label class="form-label">Moeda</label>
+                <select id="invCurrency" class="form-select">
+                  <option value="BRL">BRL</option>
+                  <option value="USD">USD</option>
+                  <option value="EUR">EUR</option>
                 </select>
               </div>
               <div class="form-group" style="flex: 1;">
@@ -5380,7 +5392,9 @@ function resetInvestmentForm() {
   document.getElementById('invId').value = '';
   document.getElementById('invSymbol').value = '';
   document.getElementById('invName').value = '';
+  document.getElementById('invBroker').value = '';
   document.getElementById('invAssetType').value = 'Ação';
+  document.getElementById('invCurrency').value = 'BRL';
   document.getElementById('invLatestPrice').value = '';
 }
 
@@ -5390,7 +5404,9 @@ function editInvestment(id) {
   document.getElementById('invId').value = inv.id;
   document.getElementById('invSymbol').value = inv.symbol || '';
   document.getElementById('invName').value = inv.name || '';
+  document.getElementById('invBroker').value = inv.broker || '';
   document.getElementById('invAssetType').value = inv.assetType || 'Ação';
+  document.getElementById('invCurrency').value = (inv.currency || 'BRL').toUpperCase();
   document.getElementById('invLatestPrice').value = isFinite(Number(inv.latestPrice)) ? Number(inv.latestPrice) : '';
   showToast('Edite e clique em Salvar', 'info');
 }
@@ -5464,7 +5480,9 @@ function handleSaveInvestment(e) {
     id: document.getElementById('invId').value || '',
     symbol: document.getElementById('invSymbol').value || '',
     name: document.getElementById('invName').value || '',
+    broker: document.getElementById('invBroker').value || '',
     assetType: document.getElementById('invAssetType').value || 'Ação',
+    currency: document.getElementById('invCurrency').value || 'BRL',
     latestPrice: document.getElementById('invLatestPrice').value || ''
   };
 

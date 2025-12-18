@@ -430,19 +430,24 @@ function getPortfolioBundle(token) {
     if (!validateSession(token)) return { success: false, message: 'Sessão inválida ou expirada' };
     ensureInvestmentSheets_();
 
-    const portfolio = getPortfolio(token);
-    const assets = listInvestments(token);
-    const recentTx = listInvestmentTransactions(token, { limit: 20 });
+    const invVersion = getUserDataVersion('investments');
+    const cacheKey = makeCacheKey(`investments_bundle_v${invVersion}`, { v: invVersion });
 
-    return {
-      success: true,
-      message: 'Dados de investimentos carregados',
-      data: {
-        portfolio: portfolio && portfolio.success ? portfolio.data : { positions: [], totals: {} },
-        investments: assets && assets.success ? assets.data : [],
-        recentTransactions: recentTx && recentTx.success ? recentTx.data : []
-      }
-    };
+    return getCachedData(cacheKey, function() {
+      const portfolio = getPortfolio(token);
+      const assets = listInvestments(token);
+      const recentTx = listInvestmentTransactions(token, { limit: 20 });
+
+      return {
+        success: true,
+        message: 'Dados de investimentos carregados',
+        data: {
+          portfolio: portfolio && portfolio.success ? portfolio.data : { positions: [], totals: {} },
+          investments: assets && assets.success ? assets.data : [],
+          recentTransactions: recentTx && recentTx.success ? recentTx.data : []
+        }
+      };
+    }, 120);
   } catch (error) {
     console.error('[INVESTMENTS] Erro em getPortfolioBundle:', error);
     return { success: false, message: 'Erro ao carregar investimentos: ' + error.message };
@@ -480,4 +485,3 @@ function rowToInvestmentTx_(row) {
     updatedAt: row[9] || ''
   };
 }
-
