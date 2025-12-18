@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="FinanPessoal">
-  <link rel="manifest" href="manifest.json">
+  <!-- Apps Script Web App não serve arquivos estáticos como manifest.json; remover para evitar 404 no console -->
 
   <!-- Chart.js para gráficos -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -65,6 +65,13 @@
       --ui-font-size: 14px;
       --ui-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu',
                         'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+
+      /* Tokens usados em modais e componentes */
+      --bg-primary: var(--white);
+      --bg-secondary: var(--light-gray);
+      --text-primary: var(--dark);
+      --text-secondary: var(--gray);
+      --border-color: var(--border);
     }
 
     /* Dark Mode Variables */
@@ -78,6 +85,12 @@
       --bg-gradient-2: #312e81;
       --shadow: 0 1px 3px rgba(0,0,0,0.3);
       --shadow-lg: 0 10px 25px rgba(0,0,0,0.5);
+
+      --bg-primary: #111827;
+      --bg-secondary: #1f2937;
+      --text-primary: #f9fafb;
+      --text-secondary: #d1d5db;
+      --border-color: #374151;
     }
 
     body.dark-mode .kpi-card,
@@ -129,12 +142,7 @@
         opacity: 0;
         transform: translateY(30px);
 
-        // Preferências de interface (tema, fonte, densidade)
-        try {
-          applyUiPreferences(settings);
-        } catch (e) {
-          console.warn('Falha ao aplicar preferências de UI:', e);
-        }
+        /* Preferências de interface (removido JS acidental no CSS) */
       }
       to {
         opacity: 1;
@@ -655,12 +663,26 @@
     .form-textarea {
       width: 100%;
       padding: 12px 16px;
-      border: 2px solid var(--border);
+      border: 2px solid var(--border-color);
       border-radius: 8px;
       font-size: 1em;
       font-family: inherit;
       transition: var(--transition);
-      background: var(--white);
+      background: var(--bg-primary);
+      color: var(--text-primary);
+    }
+
+    .form-input::placeholder,
+    .form-select::placeholder,
+    .form-textarea::placeholder {
+      color: var(--text-secondary);
+      opacity: 0.8;
+    }
+
+    /* Em modo escuro, garantir legibilidade dos <option> no dropdown (alguns browsers usam cores padrão) */
+    body.dark-mode select option {
+      background: var(--bg-primary);
+      color: var(--text-primary);
     }
     
     .form-input:focus,
@@ -703,7 +725,7 @@
     }
     
     .file-input-label:hover {
-      background: #e5e7eb;
+      background: var(--bg-secondary);
       border-color: var(--primary);
     }
     
@@ -874,7 +896,7 @@
     }
     
     .table th {
-      background: linear-gradient(135deg, var(--light-gray), #e5e7eb);
+      background: linear-gradient(135deg, var(--bg-secondary), var(--border-color));
       font-weight: 700;
       color: var(--dark);
       font-size: 0.85em;
@@ -5111,6 +5133,10 @@ document.getElementById('emailReportsForm')?.addEventListener('submit', function
 document.getElementById('appearanceForm')?.addEventListener('submit', function(e) {
   e.preventDefault();
 
+  const submitBtn = e.target?.querySelector('button[type=\"submit\"]');
+  if (submitBtn) submitBtn.disabled = true;
+  const enableSubmitBtn = () => { if (submitBtn) submitBtn.disabled = false; };
+
   const theme = document.getElementById('uiTheme').value;
   const uiSettings = {
     darkMode: theme === 'dark',
@@ -5123,8 +5149,16 @@ document.getElementById('appearanceForm')?.addEventListener('submit', function(e
   applyUiPreferences(uiSettings);
 
   // Persiste no backend
+  showLoading();
   google.script.run
     .withSuccessHandler(function(result) {
+      hideLoading();
+      enableSubmitBtn();
+      if (!result) {
+        console.warn('updateUserSettings retornou resposta vazia:', result);
+        showToast('Aparência aplicada, mas não foi possível confirmar o salvamento no servidor.', 'warning');
+        return;
+      }
       if (result && result.success) {
         showSuccess('Aparência salva com sucesso!');
       } else {
@@ -5132,6 +5166,8 @@ document.getElementById('appearanceForm')?.addEventListener('submit', function(e
       }
     })
     .withFailureHandler(function(error) {
+      hideLoading();
+      enableSubmitBtn();
       showError('Erro ao salvar aparência: ' + error.message);
     })
     .updateUserSettings(sessionToken, uiSettings);
