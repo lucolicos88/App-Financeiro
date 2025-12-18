@@ -151,3 +151,34 @@ function testarEstrutura() {
   const attachmentIndex = headers.indexOf('attachmentId');
   Logger.log('Índice de attachmentId:', attachmentIndex);
 }
+
+function testarPreviewImportacaoExtratoCsv() {
+  const loginResult = login('admin123');
+  if (!loginResult || !loginResult.success) {
+    Logger.log('Login falhou');
+    return;
+  }
+
+  const token = loginResult.token;
+
+  const csv = [
+    'Data;Descrição;Valor',
+    '01/12/2025;Supermercado;-123,45',
+    '02/12/2025;Salário;3500,00'
+  ].join('\n');
+
+  const analysis = statementImportAnalyze(token, csv);
+  Logger.log('Analyze: ' + JSON.stringify(analysis));
+
+  const options = {
+    delimiter: ';',
+    hasHeader: true,
+    mapping: { dateCol: 0, descriptionCol: 1, amountCol: 2 },
+    defaults: { debitCategory: 'A revisar', creditCategory: 'A revisar', paymentMethod: 'Outros' },
+    source: 'Teste',
+    account: 'Conta Teste'
+  };
+
+  const preview = statementImportPreview(token, csv, options);
+  Logger.log('Preview: ' + JSON.stringify(preview));
+}
