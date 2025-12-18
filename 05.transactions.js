@@ -250,6 +250,50 @@ function queryTransactions(token, filters) {
 
 function listTransactions(token, filters) {
   try {
+    if (!validateSession(token)) {
+      return {
+        success: false,
+        message: 'SessÇœo invÇ­lida ou expirada',
+        data: []
+      };
+    }
+
+    const page = (filters && filters.page && filters.page > 0) ? parseInt(filters.page) : 1;
+    const pageSize = (filters && filters.pageSize && filters.pageSize > 0)
+      ? Math.min(parseInt(filters.pageSize), 1000)
+      : 50;
+
+    const normalizedFilters = { ...(filters || {}), page: page, pageSize: pageSize };
+
+    // Cache por versÇœo de dados do usuÇ­rio + filtros
+    const cacheable = pageSize <= 200; // evita estourar limites do CacheService
+    if (!cacheable) {
+      return listTransactionsNoCache_(token, normalizedFilters);
+    }
+
+    const txVersion = getUserDataVersion('transactions');
+    const cacheKey = makeCacheKey(`list_transactions_v${txVersion}`, normalizedFilters);
+
+    return getCachedData(cacheKey, function() {
+      return listTransactionsNoCache_(token, normalizedFilters);
+    }, 60);
+  } catch (error) {
+    console.error('[TRANSACTIONS] Erro em listTransactions (cache wrapper):', error);
+    return {
+      success: false,
+      message: 'Erro ao listar transaÇõÇæes: ' + error.message,
+      data: [],
+      count: 0,
+      total: 0,
+      page: 1,
+      pageSize: 50,
+      totalPages: 0
+    };
+  }
+}
+
+function listTransactionsNoCache_(token, filters) {
+  try {
     console.log('[TRANSACTIONS] listTransactions chamada com filters:', JSON.stringify(filters));
 
     if (!validateSession(token)) {
